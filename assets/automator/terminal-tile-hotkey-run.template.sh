@@ -14,13 +14,13 @@ case "$front_bundle_id" in
     ;;
 esac
 
-if [[ -x "$HOME/.local/bin/terminal-tile-all" ]]; then
-  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$HOME/.local/bin/terminal-tile-all"
+if [[ -x "$HOME/.local/bin/tile" ]]; then
+  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$HOME/.local/bin/tile"
 fi
 
-if command -v terminal-tile-all >/dev/null 2>&1; then
-  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$(command -v terminal-tile-all)"
+if command -v tile >/dev/null 2>&1; then
+  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$(command -v tile)"
 fi
 
-echo "terminal-tile-all 未找到，请先安装到 ~/.local/bin/terminal-tile-all。" >&2
+echo "tile 未找到，请先安装到 ~/.local/bin/tile。" >&2
 exit 1

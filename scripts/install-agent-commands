@@ -1,0 +1,241 @@
+#!/bin/zsh
+
+set -euo pipefail
+
+REPO_ROOT="${0:A:h:h}"
+BIN_DIR="${TILE_INSTALL_BIN_DIR:-$HOME/.local/bin}"
+CLAUDE_DIR="${CLAUDE_COMMANDS_DIR:-$HOME/.claude/commands}"
+CODEX_DIR="${CODEX_PROMPTS_DIR:-$HOME/.codex/prompts}"
+OPENCLAW_SKILLS_DIR="${OPENCLAW_SKILLS_DIR:-$HOME/.openclaw/workspace/skills}"
+OPENCLAW_SKILL_NAMES=(tile zl2 zl3 zl4 zr2 zr3 zr4)
+
+command_body() {
+  local mode="$1"
+  local cmd="${BIN_DIR}/tile"
+  local description="$2"
+
+  cat <<EOF
+Immediately run the local command \`${cmd}${mode:+ ${mode}}\`.
+
+Rules:
+- Execute it now with Bash. Do not ask follow-up questions.
+- Do not explain the tool or propose alternatives.
+- If it succeeds, reply with one short line only.
+- If \`${cmd}\` is missing, tell the user to run \`scripts/install-agent-commands\`.
+EOF
+}
+
+install_bin_scripts() {
+  mkdir -p "$BIN_DIR"
+
+  local name
+  for name in \
+    terminal-tile-all \
+    terminal-tile-hotkey \
+    terminal-tile-zone-picker \
+    tile \
+    zl2 zl3 zl4 zr2 zr3 zr4; do
+    install -m 0755 "${REPO_ROOT}/scripts/${name}" "${BIN_DIR}/${name}"
+    echo "OK bin: ${BIN_DIR}/${name}"
+  done
+
+  install_ghostty_helper
+}
+
+install_ghostty_helper() {
+  local source_path="${REPO_ROOT}/scripts/ghostty-window-helper"
+  local target_path="${BIN_DIR}/ghostty-window-helper"
+  local swiftc_cmd=""
+  local compile_source=""
+  local cleanup_source=0
+
+  if command -v swiftc >/dev/null 2>&1; then
+    swiftc_cmd="$(command -v swiftc)"
+  elif command -v xcrun >/dev/null 2>&1; then
+    swiftc_cmd="$(xcrun --find swiftc 2>/dev/null || true)"
+  fi
+
+  if [[ -n "$swiftc_cmd" ]]; then
+    compile_source="$source_path"
+    if head -n 1 "$source_path" | grep -q '^#!'; then
+      compile_source="$(mktemp "${TMPDIR:-/tmp}/ghostty-window-helper.XXXXXX.swift")"
+      cleanup_source=1
+      tail -n +2 "$source_path" > "$compile_source"
+    fi
+
+    if "$swiftc_cmd" -O "$compile_source" -o "$target_path"; then
+      chmod 0755 "$target_path"
+      if (( cleanup_source == 1 )); then
+        rm -f "$compile_source"
+      fi
+      echo "OK bin: ${target_path} (compiled)"
+      return 0
+    fi
+    if (( cleanup_source == 1 )); then
+      rm -f "$compile_source"
+    fi
+    echo "WARN: swiftc 编译 ghostty-window-helper 失败，回退为脚本安装。" >&2
+  fi
+
+  install -m 0755 "$source_path" "$target_path"
+  echo "OK bin: ${target_path}"
+}
+
+install_claude_commands() {
+  mkdir -p "$CLAUDE_DIR"
+
+  local name mode description target
+  for entry in \
+    "tile||Tile all terminal windows immediately" \
+    "zl2|zl2|Tile terminal windows into left half zone immediately" \
+    "zl3|zl3|Tile terminal windows into left third zone immediately" \
+    "zl4|zl4|Tile terminal windows into left quarter zone immediately" \
+    "zr2|zr2|Tile terminal windows into right half zone immediately" \
+    "zr3|zr3|Tile terminal windows into right third zone immediately" \
+    "zr4|zr4|Tile terminal windows into right quarter zone immediately"; do
+    name="${entry%%|*}"
+    local rest="${entry#*|}"
+    mode="${rest%%|*}"
+    description="${rest#*|}"
+    target="${CLAUDE_DIR}/${name}.md"
+
+    cat > "$target" <<EOF
+---
+description: ${description}
+---
+
+$(command_body "$mode" "$description")
+EOF
+    echo "OK claude: ${target}"
+  done
+}
+
+install_codex_prompts() {
+  mkdir -p "$CODEX_DIR"
+
+  local name mode description target
+  for entry in \
+    "tile||Tile all terminal windows immediately" \
+    "zl2|zl2|Tile terminal windows into left half zone immediately" \
+    "zl3|zl3|Tile terminal windows into left third zone immediately" \
+    "zl4|zl4|Tile terminal windows into left quarter zone immediately" \
+    "zr2|zr2|Tile terminal windows into right half zone immediately" \
+    "zr3|zr3|Tile terminal windows into right third zone immediately" \
+    "zr4|zr4|Tile terminal windows into right quarter zone immediately"; do
+    name="${entry%%|*}"
+    local rest="${entry#*|}"
+    mode="${rest%%|*}"
+    description="${rest#*|}"
+    target="${CODEX_DIR}/${name}.md"
+
+    cat > "$target" <<EOF
+# ${name}
+
+${description}
+
+$(command_body "$mode" "$description")
+EOF
+    echo "OK codex: ${target}"
+  done
+}
+
+openclaw_skill_body() {
+  local name="$1"
+  local cmd
+  local description
+
+  if [[ "$name" == "tile" ]]; then
+    cmd="${BIN_DIR}/tile"
+    description="立即整理所有终端窗口。"
+  else
+    cmd="${BIN_DIR}/${name}"
+    case "$name" in
+      zl2) description="立即整理到左侧 1/2 zone。" ;;
+      zl3) description="立即整理到左侧 1/3 zone。" ;;
+      zl4) description="立即整理到左侧 1/4 zone。" ;;
+      zr2) description="立即整理到右侧 1/2 zone。" ;;
+      zr3) description="立即整理到右侧 1/3 zone。" ;;
+      zr4) description="立即整理到右侧 1/4 zone。" ;;
+      *) description="立即整理终端窗口。" ;;
+    esac
+  fi
+
+  cat <<EOF
+---
+name: ${name}
+description: ${description}
+---
+
+# ${name}
+
+当用户通过 \`/${name}\` 调用此 skill 时，立即执行本机命令 \`${cmd}\`。
+
+执行规则：
+- 直接运行命令，不要先提问。
+- 不要解释工具或给替代方案。
+- 成功时只返回一行短结果。
+- 若命令不存在，只提示用户运行 \`scripts/install-agent-commands\`。
+EOF
+}
+
+install_openclaw_skills() {
+  mkdir -p "$OPENCLAW_SKILLS_DIR"
+  rm -rf "${OPENCLAW_SKILLS_DIR}/terminal-tile"
+
+  local name skill_dir
+  for name in "${OPENCLAW_SKILL_NAMES[@]}"; do
+    skill_dir="${OPENCLAW_SKILLS_DIR}/${name}"
+    mkdir -p "$skill_dir"
+    cat > "${skill_dir}/SKILL.md" <<EOF
+$(openclaw_skill_body "$name")
+EOF
+    echo "OK openclaw: ${skill_dir}/SKILL.md"
+  done
+}
+
+bootstrap_hotkeys() {
+  if [[ "${INSTALL_AGENT_SKIP_HOTKEY_BOOTSTRAP:-0}" == "1" ]]; then
+    return 0
+  fi
+
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    return 0
+  fi
+
+  "${BIN_DIR}/terminal-tile-hotkey" bootstrap || true
+  "${BIN_DIR}/terminal-tile-hotkey" zone-bootstrap || true
+}
+
+print_usage() {
+  cat <<'EOF'
+Usage:
+  scripts/install-agent-commands
+
+Installs:
+  - ~/.local/bin/{tile,zl2..zr4,terminal-tile-*,ghostty-window-helper}
+  - ~/.claude/commands/{tile,zl2..zr4}.md
+  - ~/.codex/prompts/{tile,zl2..zr4}.md
+  - ~/.openclaw/workspace/skills/{tile,zl2..zr4}
+EOF
+}
+
+if (( $# > 0 )); then
+  case "$1" in
+    -h|--help)
+      print_usage
+      exit 0
+      ;;
+    *)
+      print_usage >&2
+      exit 2
+      ;;
+  esac
+fi
+
+install_bin_scripts
+install_claude_commands
+install_codex_prompts
+install_openclaw_skills
+bootstrap_hotkeys
+
+echo "安装完成。"

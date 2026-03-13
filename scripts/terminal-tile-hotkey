@@ -1,49 +1,38 @@
 #!/bin/zsh
 
 # Manage macOS Services hotkey bootstrap for terminal-window-tiler.
-# Commands:
-#   bootstrap           Install service/runner and bind default hotkey on first run
-#   set <combo>         Set or change hotkey (e.g. cmd+shift+t)
-#   status              Show install status and current key binding
-#   uninstall           Remove managed service/runner and status entry
 
 set -u
 setopt typesetsilent
 
 APP_MARKER="managed-by=terminal-window-tiler"
 APP_NAME="terminal-window-tiler"
-SERVICE_DISPLAY_NAME="Terminal Tile"
-SERVICE_KEY="(null) - ${SERVICE_DISPLAY_NAME} - runWorkflowAsService"
-DEFAULT_COMBO="ctrl+command+t"
-DEFAULT_KEY_EQ="@^t"
 
 TILE_HOME="${TILE_HOTKEY_HOME:-$HOME}"
 CONFIG_DIR="${TILE_HOME}/.config/${APP_NAME}"
-SENTINEL_PATH="${CONFIG_DIR}/hotkey-bootstrap-v1"
-
 BIN_DIR="${TILE_HOME}/.local/bin"
-RUNNER_PATH="${BIN_DIR}/terminal-tile-hotkey-run"
-RUNNER_MARKER="# ${APP_MARKER}"
-
 SERVICES_DIR="${TILE_HOME}/Library/Services"
-WORKFLOW_NAME="${SERVICE_DISPLAY_NAME}.workflow"
-WORKFLOW_PATH="${SERVICES_DIR}/${WORKFLOW_NAME}"
-WORKFLOW_MARKER_PATH="${WORKFLOW_PATH}/Contents/Resources/${APP_NAME}.marker"
-
 PREFERENCES_DIR="${TILE_HOME}/Library/Preferences"
 PBS_PLIST="${TILE_HOTKEY_PBS_PLIST:-${PREFERENCES_DIR}/pbs.plist}"
 PLIST_BUDDY="/usr/libexec/PlistBuddy"
 PBS_BIN="/System/Library/CoreServices/pbs"
 
-SCRIPT_DIR="${0:A:h}"
-REPO_ROOT="${SCRIPT_DIR:h}"
-WORKFLOW_TEMPLATE_PATH="${REPO_ROOT}/assets/automator/${WORKFLOW_NAME}"
-RUNNER_TEMPLATE_PATH="${REPO_ROOT}/assets/automator/terminal-tile-hotkey-run.template.sh"
 TERMINAL_APP_BUNDLES=(
   "com.googlecode.iterm2"
   "com.apple.Terminal"
   "com.mitchellh.ghostty"
 )
+
+CURRENT_TARGET=""
+CURRENT_SERVICE_DISPLAY_NAME=""
+CURRENT_SERVICE_KEY=""
+CURRENT_DEFAULT_COMBO=""
+CURRENT_DEFAULT_KEY_EQ=""
+CURRENT_RUNNER_PATH=""
+CURRENT_WORKFLOW_PATH=""
+CURRENT_WORKFLOW_MARKER_PATH=""
+CURRENT_SENTINEL_PATH=""
+CURRENT_RUNNER_MODE=""
 
 usage() {
   cat <<'EOF'
@@ -53,12 +42,50 @@ Usage:
   terminal-tile-hotkey status
   terminal-tile-hotkey uninstall
 
+  terminal-tile-hotkey zone-bootstrap
+  terminal-tile-hotkey zone-set <combo>
+  terminal-tile-hotkey zone-status
+  terminal-tile-hotkey zone-uninstall
+
 Hotkey combo format:
   cmd|command, shift, opt|option|alt, ctrl|control + single letter (a-z)
 Examples:
-  terminal-tile-hotkey set cmd+shift+t
   terminal-tile-hotkey set ctrl+command+t
+  terminal-tile-hotkey zone-set ctrl+command+shift+t
 EOF
+}
+
+configure_target() {
+  local target="${1:-main}"
+
+  case "$target" in
+    main)
+      CURRENT_TARGET="main"
+      CURRENT_SERVICE_DISPLAY_NAME="Terminal Tile"
+      CURRENT_DEFAULT_COMBO="ctrl+command+t"
+      CURRENT_DEFAULT_KEY_EQ="@^t"
+      CURRENT_RUNNER_MODE="full"
+      CURRENT_RUNNER_PATH="${BIN_DIR}/terminal-tile-hotkey-run"
+      CURRENT_SENTINEL_PATH="${CONFIG_DIR}/hotkey-bootstrap-v1"
+      ;;
+    zone)
+      CURRENT_TARGET="zone"
+      CURRENT_SERVICE_DISPLAY_NAME="Terminal Tile Zone"
+      CURRENT_DEFAULT_COMBO="ctrl+command+shift+t"
+      CURRENT_DEFAULT_KEY_EQ='@$^t'
+      CURRENT_RUNNER_MODE="zone"
+      CURRENT_RUNNER_PATH="${BIN_DIR}/terminal-tile-zone-hotkey-run"
+      CURRENT_SENTINEL_PATH="${CONFIG_DIR}/zone-hotkey-bootstrap-v1"
+      ;;
+    *)
+      echo "未知 target: ${target}" >&2
+      return 1
+      ;;
+  esac
+
+  CURRENT_SERVICE_KEY="(null) - ${CURRENT_SERVICE_DISPLAY_NAME} - runWorkflowAsService"
+  CURRENT_WORKFLOW_PATH="${SERVICES_DIR}/${CURRENT_SERVICE_DISPLAY_NAME}.workflow"
+  CURRENT_WORKFLOW_MARKER_PATH="${CURRENT_WORKFLOW_PATH}/Contents/Resources/${APP_NAME}.marker"
 }
 
 is_macos() {
@@ -93,17 +120,17 @@ refresh_services() {
 }
 
 workflow_is_managed() {
-  [[ -f "$WORKFLOW_MARKER_PATH" ]] && grep -q "$APP_MARKER" "$WORKFLOW_MARKER_PATH" 2>/dev/null
+  [[ -f "$CURRENT_WORKFLOW_MARKER_PATH" ]] && grep -q "$APP_MARKER" "$CURRENT_WORKFLOW_MARKER_PATH" 2>/dev/null
 }
 
 runner_is_managed() {
-  [[ -f "$RUNNER_PATH" ]] && grep -q "$APP_MARKER" "$RUNNER_PATH" 2>/dev/null
+  [[ -f "$CURRENT_RUNNER_PATH" ]] && grep -q "$APP_MARKER" "$CURRENT_RUNNER_PATH" 2>/dev/null
 }
 
-create_workflow_bundle_fallback() {
-  ensure_dir "${WORKFLOW_PATH}/Contents/Resources"
+create_workflow_bundle() {
+  ensure_dir "${CURRENT_WORKFLOW_PATH}/Contents/Resources"
 
-  cat > "${WORKFLOW_PATH}/Contents/Info.plist" <<'EOF'
+  cat > "${CURRENT_WORKFLOW_PATH}/Contents/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -118,7 +145,7 @@ create_workflow_bundle_fallback() {
       <key>NSMenuItem</key>
       <dict>
         <key>default</key>
-        <string>Terminal Tile</string>
+        <string>${CURRENT_SERVICE_DISPLAY_NAME}</string>
       </dict>
       <key>NSMessage</key>
       <string>runWorkflowAsService</string>
@@ -128,7 +155,7 @@ create_workflow_bundle_fallback() {
 </plist>
 EOF
 
-  cat > "${WORKFLOW_PATH}/Contents/document.wflow" <<'EOF'
+  cat > "${CURRENT_WORKFLOW_PATH}/Contents/document.wflow" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -177,7 +204,7 @@ EOF
         <key>ActionParameters</key>
         <dict>
           <key>COMMAND_STRING</key>
-          <string>"$HOME/.local/bin/terminal-tile-hotkey-run"</string>
+          <string>"${CURRENT_RUNNER_PATH}"</string>
           <key>CheckedForUserDefaultShell</key>
           <true/>
           <key>inputMethod</key>
@@ -230,36 +257,32 @@ install_workflow() {
   local force="${1:-0}"
   ensure_dir "$SERVICES_DIR"
 
-  if [[ -d "$WORKFLOW_PATH" ]] && ! workflow_is_managed; then
+  if [[ -d "$CURRENT_WORKFLOW_PATH" ]] && ! workflow_is_managed; then
     if [[ "$force" == "1" ]]; then
-      rm -rf "$WORKFLOW_PATH"
+      rm -rf "$CURRENT_WORKFLOW_PATH"
     else
-      echo "SKIP:found-unmanaged-workflow:${WORKFLOW_PATH}"
+      echo "SKIP:found-unmanaged-workflow:${CURRENT_WORKFLOW_PATH}"
       return 2
     fi
   fi
 
-  rm -rf "$WORKFLOW_PATH"
-
-  if [[ -d "$WORKFLOW_TEMPLATE_PATH" ]]; then
-    cp -R "$WORKFLOW_TEMPLATE_PATH" "$WORKFLOW_PATH"
-  else
-    create_workflow_bundle_fallback
-  fi
-
-  ensure_dir "${WORKFLOW_PATH}/Contents/Resources"
-  printf '%s\n' "$APP_MARKER" > "$WORKFLOW_MARKER_PATH"
+  rm -rf "$CURRENT_WORKFLOW_PATH"
+  create_workflow_bundle
+  printf '%s\n' "$APP_MARKER" > "$CURRENT_WORKFLOW_MARKER_PATH"
   return 0
 }
 
-create_runner_fallback() {
-  cat > "$RUNNER_PATH" <<'EOF'
+create_runner() {
+  local runner_body=""
+
+  case "$CURRENT_RUNNER_MODE" in
+    full)
+      runner_body=$(cat <<'EOF'
 #!/bin/zsh
 # managed-by=terminal-window-tiler
 
 set -u
 
-# Use frontmost app lookup that does not require System Events automation permission.
 front_bundle_id="$(osascript -e 'id of app (path to frontmost application as text)' 2>/dev/null || true)"
 
 case "$front_bundle_id" in
@@ -270,6 +293,14 @@ case "$front_bundle_id" in
     ;;
 esac
 
+if [[ -x "$HOME/.local/bin/tile" ]]; then
+  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$HOME/.local/bin/tile"
+fi
+
+if command -v tile >/dev/null 2>&1; then
+  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$(command -v tile)"
+fi
+
 if [[ -x "$HOME/.local/bin/terminal-tile-all" ]]; then
   TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$HOME/.local/bin/terminal-tile-all"
 fi
@@ -278,31 +309,61 @@ if command -v terminal-tile-all >/dev/null 2>&1; then
   TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$(command -v terminal-tile-all)"
 fi
 
-echo "terminal-tile-all 未找到，请先安装到 ~/.local/bin/terminal-tile-all。" >&2
+echo "tile 未找到，请先安装到 ~/.local/bin/tile。" >&2
 exit 1
 EOF
+)
+      ;;
+    zone)
+      runner_body=$(cat <<'EOF'
+#!/bin/zsh
+# managed-by=terminal-window-tiler
+
+set -u
+
+front_bundle_id="$(osascript -e 'id of app (path to frontmost application as text)' 2>/dev/null || true)"
+
+case "$front_bundle_id" in
+  com.googlecode.iterm2|com.apple.Terminal|com.mitchellh.ghostty)
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+if [[ -x "$HOME/.local/bin/terminal-tile-zone-picker" ]]; then
+  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$HOME/.local/bin/terminal-tile-zone-picker"
+fi
+
+if command -v terminal-tile-zone-picker >/dev/null 2>&1; then
+  TILE_SKIP_HOTKEY_BOOTSTRAP=1 exec "$(command -v terminal-tile-zone-picker)"
+fi
+
+echo "terminal-tile-zone-picker 未找到，请先安装到 ~/.local/bin/terminal-tile-zone-picker。" >&2
+exit 1
+EOF
+)
+      ;;
+  esac
+
+  printf '%s\n' "$runner_body" > "$CURRENT_RUNNER_PATH"
 }
 
 install_runner() {
   local force="${1:-0}"
   ensure_dir "$BIN_DIR"
 
-  if [[ -f "$RUNNER_PATH" ]] && ! runner_is_managed; then
+  if [[ -f "$CURRENT_RUNNER_PATH" ]] && ! runner_is_managed; then
     if [[ "$force" == "1" ]]; then
-      rm -f "$RUNNER_PATH"
+      rm -f "$CURRENT_RUNNER_PATH"
     else
-      echo "SKIP:found-unmanaged-runner:${RUNNER_PATH}"
+      echo "SKIP:found-unmanaged-runner:${CURRENT_RUNNER_PATH}"
       return 2
     fi
   fi
 
-  if [[ -f "$RUNNER_TEMPLATE_PATH" ]]; then
-    cp "$RUNNER_TEMPLATE_PATH" "$RUNNER_PATH"
-  else
-    create_runner_fallback
-  fi
-
-  chmod +x "$RUNNER_PATH"
+  create_runner
+  chmod +x "$CURRENT_RUNNER_PATH"
   return 0
 }
 
@@ -369,7 +430,6 @@ combo_to_key_equivalent() {
   fi
 
   local display_key="$key"
-  (( has_shift )) && display_key="${(U)display_key}"
 
   local -a canonical_mods
   (( has_cmd )) && canonical_mods+=("cmd")
@@ -388,7 +448,6 @@ key_equivalent_to_combo() {
 
   local key="${keyeq[-1]}"
   local mods="${keyeq[1,-2]}"
-
   local has_cmd=0
   local has_shift=0
   local has_opt=0
@@ -410,19 +469,14 @@ key_equivalent_to_combo() {
   (( has_shift )) && out+=("shift")
   (( has_ctrl )) && out+=("ctrl")
   (( has_opt )) && out+=("opt")
-
-  local lower_key="${key:l}"
-  out+=("$lower_key")
+  out+=("${key:l}")
   printf '%s\n' "${(j:+:)out}"
 }
 
 key_equivalent_to_nsuikey() {
   local keyeq="$1"
   [[ -n "$keyeq" ]] || return 1
-
-  local mods="${keyeq[1,-2]}"
-  local key="${keyeq[-1]:l}"
-  printf '%s%s\n' "$mods" "$key"
+  printf '%s%s\n' "${keyeq[1,-2]}" "${keyeq[-1]:l}"
 }
 
 sync_terminal_app_shortcuts() {
@@ -433,7 +487,7 @@ sync_terminal_app_shortcuts() {
 
   local bundle
   for bundle in "${TERMINAL_APP_BUNDLES[@]}"; do
-    defaults write "$bundle" NSUserKeyEquivalents -dict-add "$SERVICE_DISPLAY_NAME" "$nsui_key" >/dev/null 2>&1 || true
+    defaults write "$bundle" NSUserKeyEquivalents -dict-add "$CURRENT_SERVICE_DISPLAY_NAME" "$nsui_key" >/dev/null 2>&1 || true
   done
 }
 
@@ -462,7 +516,7 @@ collect_conflicts() {
   local service_key
   while IFS= read -r service_key; do
     [[ -z "$service_key" ]] && continue
-    [[ "$service_key" == "$SERVICE_KEY" ]] && continue
+    [[ "$service_key" == "$CURRENT_SERVICE_KEY" ]] && continue
     collisions+=("$service_key")
   done < <(list_service_keys_with_equivalent "$keyeq")
 
@@ -473,40 +527,37 @@ set_service_key_equivalent() {
   local keyeq="$1"
   ensure_pbs_plist
 
-  "$PLIST_BUDDY" -c "Print 'NSServicesStatus:${SERVICE_KEY}'" "$PBS_PLIST" >/dev/null 2>&1 || \
-    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${SERVICE_KEY}' dict" "$PBS_PLIST" >/dev/null 2>&1
+  "$PLIST_BUDDY" -c "Print 'NSServicesStatus:${CURRENT_SERVICE_KEY}'" "$PBS_PLIST" >/dev/null 2>&1 || \
+    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${CURRENT_SERVICE_KEY}' dict" "$PBS_PLIST" >/dev/null 2>&1
 
-  "$PLIST_BUDDY" -c "Delete 'NSServicesStatus:${SERVICE_KEY}:key_equivalent'" "$PBS_PLIST" >/dev/null 2>&1 || true
-  "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${SERVICE_KEY}:key_equivalent' string ${keyeq}" "$PBS_PLIST" >/dev/null 2>&1
+  "$PLIST_BUDDY" -c "Delete 'NSServicesStatus:${CURRENT_SERVICE_KEY}:key_equivalent'" "$PBS_PLIST" >/dev/null 2>&1 || true
+  "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${CURRENT_SERVICE_KEY}:key_equivalent' string ${keyeq}" "$PBS_PLIST" >/dev/null 2>&1
 
-  # Keep the service enabled in Services menu/context for reliable hotkey dispatch.
-  "$PLIST_BUDDY" -c "Print 'NSServicesStatus:${SERVICE_KEY}:presentation_modes'" "$PBS_PLIST" >/dev/null 2>&1 || \
-    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${SERVICE_KEY}:presentation_modes' dict" "$PBS_PLIST" >/dev/null 2>&1
-  "$PLIST_BUDDY" -c "Set 'NSServicesStatus:${SERVICE_KEY}:presentation_modes:ServicesMenu' true" "$PBS_PLIST" >/dev/null 2>&1 || \
-    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${SERVICE_KEY}:presentation_modes:ServicesMenu' bool true" "$PBS_PLIST" >/dev/null 2>&1
-  "$PLIST_BUDDY" -c "Set 'NSServicesStatus:${SERVICE_KEY}:presentation_modes:ContextMenu' true" "$PBS_PLIST" >/dev/null 2>&1 || \
-    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${SERVICE_KEY}:presentation_modes:ContextMenu' bool true" "$PBS_PLIST" >/dev/null 2>&1
-  "$PLIST_BUDDY" -c "Set 'NSServicesStatus:${SERVICE_KEY}:presentation_modes:TouchBar' true" "$PBS_PLIST" >/dev/null 2>&1 || \
-    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${SERVICE_KEY}:presentation_modes:TouchBar' bool true" "$PBS_PLIST" >/dev/null 2>&1
-
-  # Required on some macOS setups; when false, Services hotkeys may not fire.
+  "$PLIST_BUDDY" -c "Print 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes'" "$PBS_PLIST" >/dev/null 2>&1 || \
+    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes' dict" "$PBS_PLIST" >/dev/null 2>&1
+  "$PLIST_BUDDY" -c "Set 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes:ServicesMenu' true" "$PBS_PLIST" >/dev/null 2>&1 || \
+    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes:ServicesMenu' bool true" "$PBS_PLIST" >/dev/null 2>&1
+  "$PLIST_BUDDY" -c "Set 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes:ContextMenu' true" "$PBS_PLIST" >/dev/null 2>&1 || \
+    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes:ContextMenu' bool true" "$PBS_PLIST" >/dev/null 2>&1
+  "$PLIST_BUDDY" -c "Set 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes:TouchBar' true" "$PBS_PLIST" >/dev/null 2>&1 || \
+    "$PLIST_BUDDY" -c "Add 'NSServicesStatus:${CURRENT_SERVICE_KEY}:presentation_modes:TouchBar' bool true" "$PBS_PLIST" >/dev/null 2>&1
   "$PLIST_BUDDY" -c "Set 'ServicesShortcutsPresent' true" "$PBS_PLIST" >/dev/null 2>&1 || \
     "$PLIST_BUDDY" -c "Add 'ServicesShortcutsPresent' bool true" "$PBS_PLIST" >/dev/null 2>&1
 }
 
 read_service_key_equivalent() {
   ensure_pbs_plist
-  "$PLIST_BUDDY" -c "Print 'NSServicesStatus:${SERVICE_KEY}:key_equivalent'" "$PBS_PLIST" 2>/dev/null || true
+  "$PLIST_BUDDY" -c "Print 'NSServicesStatus:${CURRENT_SERVICE_KEY}:key_equivalent'" "$PBS_PLIST" 2>/dev/null || true
 }
 
 remove_service_status() {
   ensure_pbs_plist
-  "$PLIST_BUDDY" -c "Delete 'NSServicesStatus:${SERVICE_KEY}'" "$PBS_PLIST" >/dev/null 2>&1 || true
+  "$PLIST_BUDDY" -c "Delete 'NSServicesStatus:${CURRENT_SERVICE_KEY}'" "$PBS_PLIST" >/dev/null 2>&1 || true
 }
 
 prompt_for_custom_combo() {
   while true; do
-    printf "默认快捷键 %s 已冲突，请输入新的快捷键组合（例如 cmd+shift+t），或输入 skip 跳过： " "$DEFAULT_COMBO" >&2
+    printf "默认快捷键 %s 已冲突，请输入新的快捷键组合（例如 cmd+shift+t），或输入 skip 跳过： " "$CURRENT_DEFAULT_COMBO" >&2
     if ! read -r input_combo; then
       echo "SKIP"
       return 0
@@ -552,17 +603,16 @@ ensure_install_prerequisites() {
 
   install_runner "$force" >/dev/null
   local runner_code=$?
-
   install_workflow "$force" >/dev/null
   local workflow_code=$?
 
   if (( runner_code == 2 )); then
-    echo "快捷键初始化跳过：检测到未托管的 runner 文件 (${RUNNER_PATH})。"
+    echo "快捷键初始化跳过：检测到未托管的 runner 文件 (${CURRENT_RUNNER_PATH})。"
     return 2
   fi
 
   if (( workflow_code == 2 )); then
-    echo "快捷键初始化跳过：检测到未托管的 Service (${WORKFLOW_PATH})。"
+    echo "快捷键初始化跳过：检测到未托管的 Service (${CURRENT_WORKFLOW_PATH})。"
     return 2
   fi
 
@@ -595,6 +645,7 @@ cmd_bootstrap() {
   current_eq="$(read_service_key_equivalent)"
   if [[ -n "$current_eq" ]]; then
     set_service_key_equivalent "$current_eq"
+    sync_terminal_app_shortcuts "$current_eq"
     refresh_services
     current_combo="$(key_equivalent_to_combo "$current_eq" 2>/dev/null || true)"
     if [[ -n "$current_combo" ]]; then
@@ -609,17 +660,19 @@ cmd_bootstrap() {
   default_conflicts=()
   while IFS= read -r line; do
     [[ -n "$line" ]] && default_conflicts+=("$line")
-  done < <(collect_conflicts "$DEFAULT_KEY_EQ")
+  done < <(collect_conflicts "$CURRENT_DEFAULT_KEY_EQ")
 
-  local chosen_combo="$DEFAULT_COMBO"
-  local chosen_eq="$DEFAULT_KEY_EQ"
+  local chosen_combo="$CURRENT_DEFAULT_COMBO"
+  local chosen_eq="$CURRENT_DEFAULT_KEY_EQ"
 
   if (( ${#default_conflicts[@]} > 0 )); then
     if [[ -t 0 && -t 1 ]]; then
       local prompt_output
       prompt_output="$(prompt_for_custom_combo)"
       if [[ "$prompt_output" == "SKIP" ]]; then
-        echo "快捷键服务已安装，未绑定按键。可手动执行：terminal-tile-hotkey set cmd+shift+t"
+        local manual_cmd="set"
+        [[ "$CURRENT_TARGET" == "zone" ]] && manual_cmd="zone-set"
+        echo "快捷键服务已安装，未绑定按键。可手动执行：terminal-tile-hotkey ${manual_cmd} cmd+shift+t"
         return 0
       fi
       chosen_combo="${prompt_output%%|*}"
@@ -633,7 +686,6 @@ cmd_bootstrap() {
   set_service_key_equivalent "$chosen_eq"
   sync_terminal_app_shortcuts "$chosen_eq"
   refresh_services
-
   echo "快捷键已就绪（${chosen_combo}）。"
   return 0
 }
@@ -661,9 +713,6 @@ cmd_set() {
 
   ensure_install_prerequisites 0
   local prep_code=$?
-  if (( prep_code == 2 )); then
-    return 1
-  fi
   if (( prep_code != 0 )); then
     return 1
   fi
@@ -698,39 +747,47 @@ cmd_status() {
 
   local has_error=0
 
-  if [[ -d "$WORKFLOW_PATH" ]]; then
+  if [[ -d "$CURRENT_WORKFLOW_PATH" ]]; then
     if workflow_is_managed; then
-      echo "OK workflow: ${WORKFLOW_PATH}"
+      echo "OK workflow: ${CURRENT_WORKFLOW_PATH}"
     else
-      echo "WARN workflow exists but unmanaged: ${WORKFLOW_PATH}"
+      echo "WARN workflow exists but unmanaged: ${CURRENT_WORKFLOW_PATH}"
     fi
   else
-    echo "ERROR workflow missing: ${WORKFLOW_PATH}"
+    echo "ERROR workflow missing: ${CURRENT_WORKFLOW_PATH}"
     has_error=1
   fi
 
-  if [[ -x "$RUNNER_PATH" ]]; then
+  if [[ -x "$CURRENT_RUNNER_PATH" ]]; then
     if runner_is_managed; then
-      echo "OK runner: ${RUNNER_PATH}"
+      echo "OK runner: ${CURRENT_RUNNER_PATH}"
     else
-      echo "WARN runner exists but unmanaged: ${RUNNER_PATH}"
+      echo "WARN runner exists but unmanaged: ${CURRENT_RUNNER_PATH}"
     fi
   else
-    echo "ERROR runner missing: ${RUNNER_PATH}"
+    echo "ERROR runner missing: ${CURRENT_RUNNER_PATH}"
     has_error=1
   fi
 
-  local tiler_cmd=""
-  if [[ -x "${BIN_DIR}/terminal-tile-all" ]]; then
-    tiler_cmd="${BIN_DIR}/terminal-tile-all"
+  local primary_cmd=""
+  if [[ "$CURRENT_RUNNER_MODE" == "full" ]]; then
+    if [[ -x "${BIN_DIR}/tile" ]]; then
+      primary_cmd="${BIN_DIR}/tile"
+    else
+      primary_cmd="$(command -v tile 2>/dev/null || true)"
+    fi
   else
-    tiler_cmd="$(command -v terminal-tile-all 2>/dev/null || true)"
+    if [[ -x "${BIN_DIR}/terminal-tile-zone-picker" ]]; then
+      primary_cmd="${BIN_DIR}/terminal-tile-zone-picker"
+    else
+      primary_cmd="$(command -v terminal-tile-zone-picker 2>/dev/null || true)"
+    fi
   fi
 
-  if [[ -n "$tiler_cmd" ]]; then
-    echo "OK tiler: ${tiler_cmd}"
+  if [[ -n "$primary_cmd" ]]; then
+    echo "OK command: ${primary_cmd}"
   else
-    echo "ERROR tiler missing: terminal-tile-all"
+    echo "ERROR command missing"
     has_error=1
   fi
 
@@ -743,6 +800,7 @@ cmd_status() {
   else
     echo "OK services-shortcuts: enabled"
   fi
+
   if [[ -z "$current_eq" ]]; then
     echo "WARN hotkey: not bound"
   else
@@ -779,28 +837,27 @@ cmd_uninstall() {
     return 1
   fi
 
-  if [[ -d "$WORKFLOW_PATH" ]]; then
+  if [[ -d "$CURRENT_WORKFLOW_PATH" ]]; then
     if workflow_is_managed; then
-      rm -rf "$WORKFLOW_PATH"
-      echo "已删除 Service：${WORKFLOW_PATH}"
+      rm -rf "$CURRENT_WORKFLOW_PATH"
+      echo "已删除 Service：${CURRENT_WORKFLOW_PATH}"
     else
-      echo "跳过未托管 Service：${WORKFLOW_PATH}"
+      echo "跳过未托管 Service：${CURRENT_WORKFLOW_PATH}"
     fi
   fi
 
-  if [[ -f "$RUNNER_PATH" ]]; then
+  if [[ -f "$CURRENT_RUNNER_PATH" ]]; then
     if runner_is_managed; then
-      rm -f "$RUNNER_PATH"
-      echo "已删除 runner：${RUNNER_PATH}"
+      rm -f "$CURRENT_RUNNER_PATH"
+      echo "已删除 runner：${CURRENT_RUNNER_PATH}"
     else
-      echo "跳过未托管 runner：${RUNNER_PATH}"
+      echo "跳过未托管 runner：${CURRENT_RUNNER_PATH}"
     fi
   fi
 
   remove_service_status
   refresh_services
-
-  rm -f "$SENTINEL_PATH"
+  rm -f "$CURRENT_SENTINEL_PATH"
   echo "快捷键已卸载。若菜单未即时刷新，可注销或重启后再试。"
 }
 
@@ -814,15 +871,35 @@ shift || true
 
 case "$subcommand" in
   bootstrap)
+    configure_target main || exit 1
     cmd_bootstrap "$@"
     ;;
   set)
+    configure_target main || exit 1
     cmd_set "$@"
     ;;
   status)
+    configure_target main || exit 1
     cmd_status "$@"
     ;;
   uninstall)
+    configure_target main || exit 1
+    cmd_uninstall "$@"
+    ;;
+  zone-bootstrap)
+    configure_target zone || exit 1
+    cmd_bootstrap "$@"
+    ;;
+  zone-set)
+    configure_target zone || exit 1
+    cmd_set "$@"
+    ;;
+  zone-status)
+    configure_target zone || exit 1
+    cmd_status "$@"
+    ;;
+  zone-uninstall)
+    configure_target zone || exit 1
     cmd_uninstall "$@"
     ;;
   *)
