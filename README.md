@@ -20,7 +20,8 @@
 
 - 一键整理 2~10 个终端窗口，按显示器分组平铺
 - 额外支持分区模式，给浏览器/微信留出固定区域
-- 支持 iTerm2 / Terminal / Ghostty 混用
+- 默认只整理当前终端 app；可选开启跨终端模式
+- 支持 iTerm2 / Terminal / Ghostty 混用（跨终端模式）
 - 推荐给偏爱独立窗口而不是 pane 的用户
 
 ## 快速开始 | Quick Start
@@ -30,14 +31,7 @@ git clone https://github.com/WiseWong6/wise-terminal-tiler.git
 cd wise-terminal-tiler
 
 mkdir -p ~/.local/bin
-cp scripts/terminal-tile-all ~/.local/bin/
-cp scripts/terminal-tile-hotkey ~/.local/bin/
-cp scripts/zl* scripts/zr* ~/.local/bin/
-chmod +x ~/.local/bin/terminal-tile-all
-chmod +x ~/.local/bin/terminal-tile-hotkey
-chmod +x ~/.local/bin/zl* ~/.local/bin/zr*
-
-~/.local/bin/terminal-tile-hotkey bootstrap
+./scripts/install-agent-commands
 ```
 
 ---
@@ -72,10 +66,11 @@ chmod +x ~/.local/bin/zl* ~/.local/bin/zr*
 ## 这个工具的边界
 
 **它做**
-- 检测当前所有 iTerm2 / Terminal / Ghostty 窗口
+- 默认检测当前终端 app 的窗口（更快，适合 90% 场景）
+- 可选开启跨终端模式，同时检测 iTerm2 / Terminal / Ghostty
 - 按显示器分组，一键平铺到固定布局（2~10 窗口）
 - 可选「分区模式」：只管理屏幕左侧或右侧的终端区，留另一半给浏览器/微信
-- 用系统快捷键触发（默认 `ctrl+command+t`）
+- 用系统快捷键触发（默认 `ctrl+command+t`，zone 选择器默认 `ctrl+command+shift+t`）
 
 **它不做**
 - 不是 pane 管理器（不替代 tmux/Zellij 的 split）
@@ -111,15 +106,7 @@ git clone https://github.com/WiseWong6/wise-terminal-tiler.git
 cd wise-terminal-tiler
 
 mkdir -p ~/.local/bin
-cp scripts/terminal-tile-all ~/.local/bin/
-cp scripts/terminal-tile-hotkey ~/.local/bin/
-cp scripts/zl* scripts/zr* ~/.local/bin/
-chmod +x ~/.local/bin/terminal-tile-all
-chmod +x ~/.local/bin/terminal-tile-hotkey
-chmod +x ~/.local/bin/zl* ~/.local/bin/zr*
-
-# 初始化系统快捷键（首次安装建议执行一次）
-~/.local/bin/terminal-tile-hotkey bootstrap
+./scripts/install-agent-commands
 ```
 
 ---
@@ -129,18 +116,43 @@ chmod +x ~/.local/bin/zl* ~/.local/bin/zr*
 ### 快捷键触发（推荐）
 
 - 默认绑定：`ctrl+command+t`
+- Zone 选择器默认绑定：`ctrl+command+shift+t`
 - 若冲突：终端会提示输入新组合（如 `cmd+shift+t`），或输入 `skip` 跳过
 
 ```bash
 # 查看快捷键状态
 terminal-tile-hotkey status
+terminal-tile-hotkey zone-status
 
 # 手动改键
 terminal-tile-hotkey set cmd+shift+t
+terminal-tile-hotkey zone-set ctrl+command+shift+t
 
 # 卸载快捷键服务
 terminal-tile-hotkey uninstall
+terminal-tile-hotkey zone-uninstall
 ```
+
+说明：
+- `ctrl+command+t` 直接执行默认全屏整理
+- `ctrl+command+shift+t` 会弹出 `zl2/zl3/zl4/zr2/zr3/zr4` 选择器，然后立即执行
+- 这两个 Service 都只会在当前前台应用是 iTerm2 / Terminal / Ghostty 时生效
+
+### 命令触发
+
+```bash
+# 默认全屏整理
+tile
+
+# 兼容最短写法
+zl4
+zr2
+```
+
+说明：
+- 默认模式下，`tile` / `zl2..zr4` 只会整理你当前所在的终端 app
+- 例如你在 Ghostty 里执行，就只整理 Ghostty；在 iTerm2 里执行，就只整理 iTerm2
+- 这条路径是默认值，因为明显更快，也更符合日常使用
 
 ### 分区模式
 
@@ -149,14 +161,19 @@ terminal-tile-hotkey uninstall
 ![Zone mode demo](./assets/demo-zone.gif)
 
 ```bash
+# 统一入口
+tile zl4
+tile zr2
+
 # 最短写法
 zl4
 zr2
 ```
 
 说明：
-- 快捷键行为不变，仍走默认全屏终端整理
+- `tile` 是统一 CLI；不带参数时等价于默认全屏整理
 - `zl2/zl3/zl4` 对应左侧分区；`zr2/zr3/zr4` 对应右侧分区
+- `zl2..zr4` 仍可直接使用，只是内部改为转发到 `tile`
 - 这些命令只移动终端窗口，不会移动浏览器、微信等非终端窗口
 - 终端区内：每列最多 `4` 个窗口，超出的窗口会自动分配到相邻列
 - 分列规则尽量均衡：例如 `5 -> 3+2`、`7 -> 4+3`、`9 -> 3+3+3`
@@ -172,15 +189,54 @@ zr2
 | `TILE_MARGIN_RIGHT` | `8` | 右边缘留白 |
 | `TILE_MARGIN_BOTTOM` | `8` | 下边缘留白 |
 | `TILE_MARGIN_LEFT` | `8` | 左边缘留白 |
+| `TILE_SCOPE` | `current` | `current` 只整理当前终端；`all` 跨终端整理 |
 | `TILE_MODE` | — | 设 `iterm_fast` 启用 iTerm2 快速模式 |
 
 ```bash
 # 调试模式
-TILE_DEBUG=1 terminal-tile-all
+TILE_DEBUG=1 tile
+
+# 临时开启跨终端模式
+TILE_SCOPE=all tile
 
 # iTerm2 快速模式（纯 iTerm2 场景速度更快）
-TILE_MODE=iterm_fast terminal-tile-all
+TILE_MODE=iterm_fast tile
 ```
+
+### Scope 与性能
+
+- 默认 `TILE_SCOPE=current`
+- 这意味着命令只整理当前终端 app，速度更快，适合绝大多数场景
+- 如果你确实需要把 `Ghostty + iTerm2 + Terminal` 一起编排，再显式使用 `TILE_SCOPE=all`
+- 跨终端模式会更慢，因为脚本必须同时探测多个终端并分别移动窗口
+
+如果你想把跨终端模式设成长期默认值，可以写入配置文件：
+
+```bash
+mkdir -p ~/.config/terminal-window-tiler
+cat > ~/.config/terminal-window-tiler/config <<'EOF'
+TILE_SCOPE=all
+EOF
+```
+
+改回默认快速模式时，把它改回：
+
+```bash
+mkdir -p ~/.config/terminal-window-tiler
+cat > ~/.config/terminal-window-tiler/config <<'EOF'
+TILE_SCOPE=current
+EOF
+```
+
+### Agent 命令
+
+安装脚本会同时写入三套 agent 入口：
+
+- Claude Code：`/tile`、`/zl2` ... `/zr4`
+- Codex：`/prompts:tile`、`/prompts:zl2` ... `/prompts:zr4`
+- OpenClaw：安装独立 skill：`tile`、`zl2` ... `zr4`，可直接触发 `/tile`、`/zl2` ... `/zr4`
+
+这些入口底层都只调用本机 `~/.local/bin/tile`，不复制平铺逻辑。
 
 ---
 

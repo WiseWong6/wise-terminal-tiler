@@ -135,6 +135,110 @@ bootstrap_hotkey_once() {
 
 bootstrap_hotkey_once
 
+resolve_local_helper() {
+  local helper_name="$1"
+  local candidate=""
+  local script_dir="${0:A:h}"
+
+  candidate="$HOME/.local/bin/${helper_name}"
+  if [[ -x "$candidate" ]]; then
+    echo "$candidate"
+    return 0
+  fi
+
+  if [[ -x "${script_dir}/${helper_name}" ]]; then
+    echo "${script_dir}/${helper_name}"
+    return 0
+  fi
+
+  if command -v "$helper_name" >/dev/null 2>&1; then
+    command -v "$helper_name"
+    return 0
+  fi
+
+  return 1
+}
+
+read_config_scope() {
+  local config_file="${TILE_CONFIG_FILE:-$HOME/.config/terminal-window-tiler/config}"
+  local line=""
+  local key=""
+  local value=""
+
+  [[ -f "$config_file" ]] || return 0
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    [[ "$line" == *"="* ]] || continue
+
+    key="${line%%=*}"
+    value="${line#*=}"
+    key="${key//[[:space:]]/}"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    if [[ "$key" == "TILE_SCOPE" ]]; then
+      echo "$value"
+      return 0
+    fi
+  done < "$config_file"
+}
+
+normalize_scope() {
+  local value="${1:-}"
+  value="${value//[[:space:]]/}"
+  value="${(L)value}"
+  case "$value" in
+    ""|current)
+      echo "current"
+      ;;
+    all|cross|crossterminal|cross-terminal|global)
+      echo "all"
+      ;;
+    *)
+      echo "current"
+      ;;
+  esac
+}
+
+detect_invoking_terminal() {
+  local term_program="${TERM_PROGRAM:-}"
+  local bundle_id="${__CFBundleIdentifier:-}"
+
+  case "$term_program" in
+    iTerm.app)
+      echo "iTerm2"
+      return 0
+      ;;
+    Apple_Terminal)
+      echo "Terminal"
+      return 0
+      ;;
+    ghostty)
+      echo "Ghostty"
+      return 0
+      ;;
+  esac
+
+  case "$bundle_id" in
+    com.googlecode.iterm2)
+      echo "iTerm2"
+      return 0
+      ;;
+    com.apple.Terminal)
+      echo "Terminal"
+      return 0
+      ;;
+    com.mitchellh.ghostty)
+      echo "Ghostty"
+      return 0
+      ;;
+  esac
+
+  return 1
+}
+
 GAP=${TILE_GAP:-10}
 M_TOP=${TILE_MARGIN_TOP:-6}
 M_RIGHT=${TILE_MARGIN_RIGHT:-8}
@@ -144,6 +248,9 @@ DEBUG_MODE=${TILE_DEBUG:-0}
 TILE_MODE=${TILE_MODE:-}
 TILE_ZONE_LAYOUT=""
 ZONE_LAYOUT=""
+CONFIG_SCOPE="$(read_config_scope)"
+TILE_SCOPE_VALUE="$(normalize_scope "${TILE_SCOPE:-$CONFIG_SCOPE}")"
+INVOKING_TERMINAL_APP="$(detect_invoking_terminal || true)"
 
 if [[ -n "$ZONE_ARG" ]]; then
   if ! ZONE_LAYOUT="$(zone_layout_from_arg "$ZONE_ARG")"; then
@@ -290,14 +397,17 @@ fi
 
 # Fallback: if fast mode finds no iTerm windows, retry with full multi-terminal mode.
 if [[ "$TILE_MODE" != "iterm_fast" || "$result" == "NO_WINDOWS" ]]; then
-# Avoid expensive System Events calls when Ghostty is not running.
-CHECK_GHOSTTY=0
-if pgrep -if ghostty >/dev/null 2>&1; then
-  CHECK_GHOSTTY=1
+# Always probe Ghostty directly. Process prechecks are not reliable when
+# multiple Ghostty instances exist or the app is not registered consistently.
+CHECK_GHOSTTY=1
+GHOSTTY_HELPER_PATH="$(resolve_local_helper ghostty-window-helper 2>/dev/null || true)"
+if [[ "$TILE_SCOPE_VALUE" == "current" && "$INVOKING_TERMINAL_APP" != "Ghostty" && -n "$INVOKING_TERMINAL_APP" ]]; then
+  CHECK_GHOSTTY=0
 fi
 
 result=$(osascript <<APPLESCRIPT
 use framework "AppKit"
+use scripting additions
 
 on getVisibleRectsTopLeft()
   set screenList to current application's NSScreen's screens()
@@ -387,6 +497,40 @@ on zoneConfigForLayout(layoutName)
   return {"", 0}
 end zoneConfigForLayout
 
+on normalizedTerminalAppName(rawName)
+  if rawName is missing value then return ""
+  set nameText to rawName as string
+  if nameText is "" then return ""
+  if nameText is "iTerm2" or nameText is "iTerm.app" or nameText is "com.googlecode.iterm2" then return "iTerm2"
+  if nameText is "Terminal" or nameText is "Apple_Terminal" or nameText is "com.apple.Terminal" then return "Terminal"
+  if nameText is "Ghostty" or nameText is "ghostty" or nameText is "com.mitchellh.ghostty" then return "Ghostty"
+  return ""
+end normalizedTerminalAppName
+
+on targetTerminalAppForScope(tileScope, invokingTerminalApp)
+  if tileScope is not "current" then return ""
+
+  set targetTerminalApp to my normalizedTerminalAppName(invokingTerminalApp)
+  if targetTerminalApp is not "" then return targetTerminalApp
+
+  try
+    tell application "System Events"
+      set frontProcList to (every application process whose frontmost is true)
+      if (count of frontProcList) > 0 then
+        set frontProc to item 1 of frontProcList
+        set targetTerminalApp to my normalizedTerminalAppName(name of frontProc)
+        if targetTerminalApp is not "" then return targetTerminalApp
+        try
+          set targetTerminalApp to my normalizedTerminalAppName(bundle identifier of frontProc)
+          if targetTerminalApp is not "" then return targetTerminalApp
+        end try
+      end if
+    end tell
+  end try
+
+  return ""
+end targetTerminalAppForScope
+
 on zoneColumnCountsFor(n)
   if n < 1 then return {}
 
@@ -420,6 +564,94 @@ on maxValueOfList(numList)
   return bestValue
 end maxValueOfList
 
+on absValue(n)
+  if n < 0 then return -n
+  return n
+end absValue
+
+on shouldSwapRecordIndices(leftRecIndex, rightRecIndex, recordList, useColumnOrder, useRightToLeft)
+  set leftRec to item leftRecIndex of recordList
+  set rightRec to item rightRecIndex of recordList
+  set leftX to item 3 of leftRec
+  set leftY to item 4 of leftRec
+  set rightX to item 3 of rightRec
+  set rightY to item 4 of rightRec
+  set laneTolerance to 48
+
+  if useColumnOrder then
+    if my absValue(leftX - rightX) > laneTolerance then
+      if useRightToLeft then
+        return leftX < rightX
+      else
+        return leftX > rightX
+      end if
+    end if
+    if my absValue(leftY - rightY) > laneTolerance then return leftY > rightY
+    if useRightToLeft then
+      return leftX < rightX
+    else
+      return leftX > rightX
+    end if
+  end if
+
+  if my absValue(leftY - rightY) > laneTolerance then return leftY > rightY
+  if my absValue(leftX - rightX) > laneTolerance then return leftX > rightX
+  return leftRecIndex > rightRecIndex
+end shouldSwapRecordIndices
+
+on sortRecordIndices(indexList, recordList, useColumnOrder, useRightToLeft)
+  set ordered to indexList
+  set itemCount to count of ordered
+  if itemCount < 2 then return ordered
+
+  repeat with i from 1 to (itemCount - 1)
+    repeat with j from (i + 1) to itemCount
+      set leftRecIndex to item i of ordered
+      set rightRecIndex to item j of ordered
+      if my shouldSwapRecordIndices(leftRecIndex, rightRecIndex, recordList, useColumnOrder, useRightToLeft) then
+        set item i of ordered to rightRecIndex
+        set item j of ordered to leftRecIndex
+      end if
+    end repeat
+  end repeat
+
+  return ordered
+end sortRecordIndices
+
+using terms from application "System Events"
+  on ghosttyWindowForKeyInList(keyText, ghosttyWindowList)
+    set targetAx to ""
+    set fallbackIndex to 0
+    set AppleScript's text item delimiters to "|"
+    set keyParts to text items of (keyText as string)
+    set AppleScript's text item delimiters to ""
+
+    if (count of keyParts) >= 1 then set targetAx to item 1 of keyParts
+    if (count of keyParts) >= 2 then
+      try
+        set fallbackIndex to (item 2 of keyParts) as integer
+      end try
+    end if
+
+    if targetAx is not "" then
+      repeat with currentWindow in ghosttyWindowList
+        try
+          tell currentWindow
+            set currentAx to (value of attribute "AXWindowNumber") as string
+          end tell
+          if currentAx is targetAx then return currentWindow
+        end try
+      end repeat
+    end if
+
+    if fallbackIndex > 0 and fallbackIndex <= (count of ghosttyWindowList) then
+      return item fallbackIndex of ghosttyWindowList
+    end if
+
+    return missing value
+  end ghosttyWindowForKeyInList
+end using terms from
+
 set gap to ${GAP}
 set mTop to ${M_TOP}
 set mRight to ${M_RIGHT}
@@ -428,11 +660,18 @@ set mLeft to ${M_LEFT}
 set debugMode to "${DEBUG_MODE}"
 set checkGhostty to ${CHECK_GHOSTTY}
 set tileZoneLayout to "${TILE_ZONE_LAYOUT}"
+set ghosttyHelperPath to "${GHOSTTY_HELPER_PATH}"
+set tileScope to "${TILE_SCOPE_VALUE}"
+set invokingTerminalApp to "${INVOKING_TERMINAL_APP}"
 set advancedMode to false
 if tileZoneLayout is not "" then set advancedMode to true
 set zoneCfg to my zoneConfigForLayout(tileZoneLayout)
 set zoneSide to item 1 of zoneCfg
 set zoneDivisor to item 2 of zoneCfg
+set targetTerminalApp to my targetTerminalAppForScope(tileScope, invokingTerminalApp)
+set includeIterm to (targetTerminalApp is "" or targetTerminalApp is "iTerm2")
+set includeTerminal to (targetTerminalApp is "" or targetTerminalApp is "Terminal")
+set includeGhostty to (targetTerminalApp is "" or targetTerminalApp is "Ghostty")
 
 set ghosttyRunning to false
 set ghosttyNeedsAX to false
@@ -444,61 +683,95 @@ set terminalCount to 0
 set ghosttyCount to 0
 
 -- iTerm2 windows (native AppleScript)
-try
-  tell application "iTerm2"
-    if it is running then
-      set idList to id of every window
-      set bdList to bounds of every window
-      repeat with i from 1 to (count of idList)
-        set wb to item i of bdList
-        set end of winRecords to {"iTerm2", item i of idList, item 1 of wb, item 2 of wb, item 3 of wb, item 4 of wb}
-      end repeat
-      set iTermCount to count of idList
-    end if
-  end tell
-end try
-
--- Terminal windows (native AppleScript)
-try
-  tell application "Terminal"
-    if it is running then
-      set idList to id of every window
-      set bdList to bounds of every window
-      repeat with i from 1 to (count of idList)
-        set wb to item i of bdList
-        set end of winRecords to {"Terminal", item i of idList, item 1 of wb, item 2 of wb, item 3 of wb, item 4 of wb}
-      end repeat
-      set terminalCount to count of idList
-    end if
-  end tell
-end try
-
--- Ghostty windows (System Events / Accessibility)
-if checkGhostty is 1 then
+if includeIterm then
   try
-    tell application "System Events"
-      set ghosttyProc to missing value
-      set ghosttyProcList to (every process whose bundle identifier is "com.mitchellh.ghostty")
-      if (count of ghosttyProcList) > 0 then
-        set ghosttyProc to item 1 of ghosttyProcList
-      else if (exists process "Ghostty") then
-        set ghosttyProc to process "Ghostty"
-      else if (exists process "ghostty") then
-        set ghosttyProc to process "ghostty"
-      end if
-
-      if ghosttyProc is not missing value then
-        set ghosttyRunning to true
-        set ghosttyProcessName to name of ghosttyProc
+    tell application "iTerm2"
+      if it is running then
+        set idList to id of every window
+        set bdList to bounds of every window
+        repeat with i from 1 to (count of idList)
+          set wb to item i of bdList
+          set end of winRecords to {"iTerm2", item i of idList, item 1 of wb, item 2 of wb, item 3 of wb, item 4 of wb}
+        end repeat
+        set iTermCount to count of idList
       end if
     end tell
-  on error
-    set ghosttyRunning to false
-    set ghosttyNeedsAX to true
   end try
 end if
 
-if ghosttyRunning then
+-- Terminal windows (native AppleScript)
+if includeTerminal then
+  try
+    tell application "Terminal"
+      if it is running then
+        set idList to id of every window
+        set bdList to bounds of every window
+        repeat with i from 1 to (count of idList)
+          set wb to item i of bdList
+          set end of winRecords to {"Terminal", item i of idList, item 1 of wb, item 2 of wb, item 3 of wb, item 4 of wb}
+        end repeat
+        set terminalCount to count of idList
+      end if
+    end tell
+  end try
+end if
+
+-- Ghostty windows (System Events / Accessibility)
+if includeGhostty and checkGhostty is 1 then
+  if ghosttyHelperPath is not "" then
+    set ghosttyRunning to true
+    try
+      set ghosttyListCommand to (quoted form of ghosttyHelperPath) & " list"
+      set ghosttyRowsText to do shell script ghosttyListCommand
+      if ghosttyRowsText is not "" then
+        set ghosttyRows to paragraphs of ghosttyRowsText
+        repeat with rowText in ghosttyRows
+          set AppleScript's text item delimiters to tab
+          set rowParts to text items of (rowText as string)
+          set AppleScript's text item delimiters to ""
+          if (count of rowParts) is 5 then
+            set winKey to item 1 of rowParts
+            set leftPos to (item 2 of rowParts) as integer
+            set topPos to (item 3 of rowParts) as integer
+            set rightPos to (item 4 of rowParts) as integer
+            set bottomPos to (item 5 of rowParts) as integer
+            set end of winRecords to {"Ghostty", winKey, leftPos, topPos, rightPos, bottomPos}
+          end if
+        end repeat
+      end if
+      set ghosttyCount to count of ghosttyRows
+      set ghosttyProcessName to "ghostty-helper"
+    on error errMsg
+      if errMsg contains "accessibility" then
+        set ghosttyNeedsAX to true
+      end if
+    end try
+  else
+    try
+      tell application "System Events"
+        set ghosttyProc to missing value
+        set ghosttyProcList to (every process whose bundle identifier is "com.mitchellh.ghostty")
+        if (count of ghosttyProcList) > 0 then
+          set ghosttyProc to item 1 of ghosttyProcList
+        else if (exists process "Ghostty") then
+          set ghosttyProc to process "Ghostty"
+        else if (exists process "ghostty") then
+          set ghosttyProc to process "ghostty"
+        end if
+
+        if ghosttyProc is not missing value then
+          set ghosttyRunning to true
+          set ghosttyProcessName to name of ghosttyProc
+        end if
+      end tell
+    on error
+      set ghosttyRunning to false
+      set ghosttyNeedsAX to true
+    end try
+  end if
+end if
+
+if ghosttyRunning and ghosttyHelperPath is "" then
   try
     tell application "System Events"
       tell process ghosttyProcessName
@@ -506,13 +779,19 @@ if ghosttyRunning then
         set ghosttyCount to count of gw
         repeat with i from 1 to (count of gw)
           set w to item i of gw
+          set ghosttyWindowNumber to ""
+          try
+            tell w
+              set ghosttyWindowNumber to (value of attribute "AXWindowNumber") as string
+            end tell
+          end try
           set p to position of w
           set s to size of w
           set leftPos to item 1 of p
           set topPos to item 2 of p
           set rightPos to leftPos + (item 1 of s)
           set bottomPos to topPos + (item 2 of s)
-          set end of winRecords to {"Ghostty", i, leftPos, topPos, rightPos, bottomPos}
+          set end of winRecords to {"Ghostty", ghosttyWindowNumber & "|" & (i as string), leftPos, topPos, rightPos, bottomPos}
         end repeat
       end tell
     end tell
@@ -554,6 +833,12 @@ repeat with sidx from 1 to screenCount
   set ids to item sidx of groups
   set n to count of ids
   if n > 0 then
+    if advancedMode then
+      set ids to my sortRecordIndices(ids, winRecords, true, zoneSide is "right")
+    else
+      set ids to my sortRecordIndices(ids, winRecords, false, false)
+    end if
+
     set r to item sidx of screenRects
     set availLeft to (item 1 of r) + mLeft
     set availTop to (item 2 of r) + mTop
@@ -617,20 +902,11 @@ repeat with sidx from 1 to screenCount
           set rec to item recIndex of winRecords
           set appName to item 1 of rec
           set winKey to item 2 of rec
-          set curX1 to item 3 of rec
-          set curY1 to item 4 of rec
-          set curX2 to item 5 of rec
-          set curY2 to item 6 of rec
-          set needsMove to true
-          if curX1 is x1 and curY1 is y1 and curX2 is x2 and curY2 is y2 then
-            set needsMove to false
-          end if
-
-          if needsMove and appName is "iTerm2" then
+          if appName is "iTerm2" then
             set end of iTermOps to {winKey, x1, y1, x2, y2}
-          else if needsMove and appName is "Terminal" then
+          else if appName is "Terminal" then
             set end of terminalOps to {winKey, x1, y1, x2, y2}
-          else if needsMove and appName is "Ghostty" then
+          else if appName is "Ghostty" then
             set end of ghosttyOps to {winKey, x1, y1, x2, y2}
           end if
 
@@ -654,20 +930,11 @@ repeat with sidx from 1 to screenCount
         set rec to item recIndex of winRecords
         set appName to item 1 of rec
         set winKey to item 2 of rec
-        set curX1 to item 3 of rec
-        set curY1 to item 4 of rec
-        set curX2 to item 5 of rec
-        set curY2 to item 6 of rec
-        set needsMove to true
-        if curX1 is x1 and curY1 is y1 and curX2 is x2 and curY2 is y2 then
-          set needsMove to false
-        end if
-
-        if needsMove and appName is "iTerm2" then
+        if appName is "iTerm2" then
           set end of iTermOps to {winKey, x1, y1, x2, y2}
-        else if needsMove and appName is "Terminal" then
+        else if appName is "Terminal" then
           set end of terminalOps to {winKey, x1, y1, x2, y2}
-        else if needsMove and appName is "Ghostty" then
+        else if appName is "Ghostty" then
           set end of ghosttyOps to {winKey, x1, y1, x2, y2}
         end if
       end repeat
@@ -695,18 +962,37 @@ repeat with sidx from 1 to screenCount
 
     if (count of ghosttyOps) > 0 then
       try
-        tell application "System Events"
-          tell process ghosttyProcessName
-            repeat with op in ghosttyOps
-              set gx1 to item 2 of op
-              set gy1 to item 3 of op
-              set gx2 to item 4 of op
-              set gy2 to item 5 of op
-              set position of window (item 1 of op) to {gx1, gy1}
-              set size of window (item 1 of op) to {gx2 - gx1, gy2 - gy1}
-            end repeat
+        if ghosttyHelperPath is not "" then
+          set payloadText to ""
+          repeat with op in ghosttyOps
+            set payloadLine to ((item 1 of op) as string) & tab & ((item 2 of op) as string) & tab & ((item 3 of op) as string) & tab & ((item 4 of op) as string) & tab & ((item 5 of op) as string)
+            if payloadText is "" then
+              set payloadText to payloadLine
+            else
+              set payloadText to payloadText & linefeed & payloadLine
+            end if
+          end repeat
+          if payloadText is not "" then
+            set ghosttyMoveCommand to "printf %s " & quoted form of payloadText & " | " & quoted form of ghosttyHelperPath & " move"
+            do shell script ghosttyMoveCommand
+          end if
+        else
+          tell application "System Events"
+            tell process ghosttyProcessName
+              repeat with op in ghosttyOps
+                set gx1 to item 2 of op
+                set gy1 to item 3 of op
+                set gx2 to item 4 of op
+                set gy2 to item 5 of op
+                set ghosttyWindowRef to my ghosttyWindowForKeyInList(item 1 of op, windows)
+                if ghosttyWindowRef is not missing value then
+                  set position of ghosttyWindowRef to {gx1, gy1}
+                  set size of ghosttyWindowRef to {gx2 - gx1, gy2 - gy1}
+                end if
+              end repeat
+            end tell
           end tell
-        end tell
+        end if
       on error
         set ghosttyNeedsAX to true
         set ghosttyMoveFailed to true
@@ -716,13 +1002,13 @@ repeat with sidx from 1 to screenCount
 end repeat
 
 if debugMode is "1" then
-  return "OK,iterm=" & iTermCount & ",terminal=" & terminalCount & ",ghostty=" & ghosttyCount & ",ghosttyProcess=" & ghosttyProcessName & ",ghosttyRunning=" & ghosttyRunning & ",ghosttyNeedsAX=" & ghosttyNeedsAX & ",ghosttyMoveFailed=" & ghosttyMoveFailed & ",zoneLayout=" & tileZoneLayout
+  return "OK,iterm=" & iTermCount & ",terminal=" & terminalCount & ",ghostty=" & ghosttyCount & ",ghosttyProcess=" & ghosttyProcessName & ",ghosttyRunning=" & ghosttyRunning & ",ghosttyNeedsAX=" & ghosttyNeedsAX & ",ghosttyMoveFailed=" & ghosttyMoveFailed & ",zoneLayout=" & tileZoneLayout & ",scope=" & tileScope & ",target=" & targetTerminalApp
 end if
 
 if ghosttyNeedsAX then
-  return "OK,GHOSTTY_NEEDS_AX,iterm=" & iTermCount & ",terminal=" & terminalCount & ",ghostty=" & ghosttyCount & ",ghosttyRunning=" & ghosttyRunning & ",ghosttyMoveFailed=" & ghosttyMoveFailed & ",zoneLayout=" & tileZoneLayout
+  return "OK,GHOSTTY_NEEDS_AX,iterm=" & iTermCount & ",terminal=" & terminalCount & ",ghostty=" & ghosttyCount & ",ghosttyRunning=" & ghosttyRunning & ",ghosttyMoveFailed=" & ghosttyMoveFailed & ",zoneLayout=" & tileZoneLayout & ",scope=" & tileScope & ",target=" & targetTerminalApp
 else
-  return "OK,iterm=" & iTermCount & ",terminal=" & terminalCount & ",ghostty=" & ghosttyCount & ",ghosttyRunning=" & ghosttyRunning & ",ghosttyMoveFailed=" & ghosttyMoveFailed & ",zoneLayout=" & tileZoneLayout
+  return "OK,iterm=" & iTermCount & ",terminal=" & terminalCount & ",ghostty=" & ghosttyCount & ",ghosttyRunning=" & ghosttyRunning & ",ghosttyMoveFailed=" & ghosttyMoveFailed & ",zoneLayout=" & tileZoneLayout & ",scope=" & tileScope & ",target=" & targetTerminalApp
 end if
 APPLESCRIPT
 )
