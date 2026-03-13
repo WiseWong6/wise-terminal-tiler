@@ -1,7 +1,7 @@
 # wise-terminal-tiler
 
 <p align="center">
-  <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
+  <a href="./README.md">中文</a> | <a href="./README.en.md">English</a> | <a href="./AGENTS.md">Agent / AI</a>
 </p>
 
 > 一个面向 macOS 的终端窗口平铺小工具。
