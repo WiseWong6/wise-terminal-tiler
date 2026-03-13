@@ -1,12 +1,41 @@
-# terminal-window-tiler
+# wise-terminal-tiler
 
-> 把散落的终端窗口一键摆好，不打断你的节奏。
+> 一个面向 macOS 的终端窗口平铺小工具。
 >
-> One keystroke to tidy up your scattered terminal windows.
+> One shortcut to restore a scattered terminal workspace.
 >
-> 专门为 MacBook 上的多终端工作流适配。
+> 专门为多终端、多显示器、键盘优先的工作流设计。
 >
-> Purpose-built for MacBook terminal workflows on macOS.
+> Purpose-built for keyboard-first terminal workflows on macOS.
+
+![Full-screen tiling demo](./assets/demo-fullscreen.gif)
+
+> 当前 README 使用的是说明性动画，后续可替换为真实录屏。
+
+## 一眼看懂 | At a Glance
+
+- 一键整理 2~10 个终端窗口
+- 支持 iTerm2 / Terminal / Ghostty
+- 按显示器分组平铺
+- 支持分区模式，给浏览器/微信留出固定区域
+- 推荐给偏爱独立窗口而不是 pane 的用户
+
+## 快速开始 | Quick Start
+
+```bash
+git clone https://github.com/WiseWong6/wise-terminal-tiler.git
+cd wise-terminal-tiler
+
+mkdir -p ~/.local/bin
+cp scripts/terminal-tile-all ~/.local/bin/
+cp scripts/terminal-tile-hotkey ~/.local/bin/
+cp scripts/zone ~/.local/bin/
+chmod +x ~/.local/bin/terminal-tile-all
+chmod +x ~/.local/bin/terminal-tile-hotkey
+chmod +x ~/.local/bin/zone
+
+~/.local/bin/terminal-tile-hotkey bootstrap
+```
 
 ---
 
@@ -93,8 +122,8 @@ Then you switch to the browser, check WeChat, come back—and the layout is a me
 仅适用于 macOS / MacBook 工作流；如果你主要在 Windows 上使用终端，这个项目不是当前目标场景。
 
 ```bash
-git clone https://github.com/WiseWong6/terminal-window-tiler.git
-cd terminal-window-tiler
+git clone https://github.com/WiseWong6/wise-terminal-tiler.git
+cd wise-terminal-tiler
 
 mkdir -p ~/.local/bin
 cp scripts/terminal-tile-all ~/.local/bin/
@@ -131,6 +160,10 @@ terminal-tile-hotkey uninstall
 ### 分区模式 | Zone Mode
 
 适合「终端 + 浏览器/微信」桌面协作流：脚本只整理终端区，其他应用保持你手动安排的结构。
+
+![Zone mode demo](./assets/demo-zone.gif)
+
+> 当前 README 使用的是说明性动画，后续可替换为真实录屏。
 
 ```bash
 # 最短写法
@@ -215,6 +248,12 @@ TILE_MODE=iterm_fast terminal-tile-all --zone 左4
 
 Ghostty 依赖辅助功能权限才能被脚本控制。若 Ghostty 窗口未被平铺：
 - 系统设置 → 隐私与安全性 → 辅助功能 → 添加 Ghostty
+
+---
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=WiseWong6/wise-terminal-tiler&type=Date)](https://www.star-history.com/#WiseWong6/wise-terminal-tiler&Date)
 
 ---
 
