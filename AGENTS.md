@@ -1,73 +1,131 @@
-# Repository Guidelines
+# Agent Guide
 
-## Project Structure & Module Organization
-This repository is a macOS terminal-window tiling utility.
+This file is optimized for AI agents, not human readers.
 
-- `scripts/terminal-tile-all`: main executable (`zsh` + embedded AppleScript).
-- `scripts/tile`: primary user-facing entrypoint.
-- `scripts/zl2` .. `scripts/zr4`: short zone wrappers that forward to `tile`.
-- `scripts/ghostty-window-helper`: Ghostty helper used for window discovery and movement.
-- `scripts/install-agent-commands`: installer for local bin scripts, agent commands, and shortcuts.
-- `scripts/terminal-tile-hotkey`: installs and manages the default hotkeys.
-- `scripts/terminal-tile-zone-picker`: zone chooser used by the zone hotkey.
-- `assets/`: static assets used by documentation.
-- `README.md`: product behavior, install flow, scope/performance notes, and compatibility guidance.
+If you need a machine-readable summary, read `agent-manifest.json` first.
 
-Keep runtime logic in `scripts/`. Keep documentation assets in `assets/` only.
+## Purpose
 
-## Build, Test, and Development Commands
-There is no build step for the main tool, but the Ghostty helper is compiled during install.
+`wise-terminal-tiler` is a macOS terminal-window tiling utility.
 
-- `zsh -n scripts/terminal-tile-all`: syntax-check the main script.
-- `zsh -n scripts/install-agent-commands scripts/tile scripts/zl2 scripts/zr3`: syntax-check installer and entrypoints.
-- `TILE_DEBUG=1 scripts/tile`: run with debug output.
-- `TILE_SCOPE=all scripts/tile`: force cross-terminal tiling.
-- `./scripts/install-agent-commands`: install local commands and rebuild the Ghostty helper binary in `~/.local/bin`.
-- `shellcheck scripts/terminal-tile-all`: optional static analysis for shell pitfalls.
+Primary user goal:
+- restore a scattered terminal workspace quickly
+- default to the current terminal app for speed
+- optionally tile across `iTerm2`, `Terminal`, and `Ghostty`
 
-## Coding Style & Naming Conventions
-- Shell: use `zsh` (`#!/bin/zsh`), 2-space indentation, and clear section comments.
-- Environment variables: uppercase with `TILE_` prefix.
-- Filenames: kebab-case for scripts.
-- Prefer deterministic layout logic and explicit defaults over implicit behavior.
-- Preserve the user-facing command model:
-  - `tile` is the primary command.
-  - `zl2` .. `zr4` are compatibility wrappers.
-  - Default scope is `current` unless `TILE_SCOPE=all` is explicitly configured.
-  - Keep the command-word model stable across environments:
-    - Shell uses `tile` / `zl2`
-    - Claude Code and OpenClaw use `/tile` / `/zl2`
-    - Codex uses `/prompts:tile` / `/prompts:zl2`
-  - Do not document shell commands with a leading `/`; `/zl2` is not valid shell syntax.
+## Canonical Entrypoints
 
-## Behavior Notes
-- `TILE_SCOPE=current` means "current terminal app", not "current window".
-- `TILE_SCOPE=all` means tiling across supported terminal apps (`iTerm2`, `Terminal`, `Ghostty`).
-- Default behavior should optimize for responsiveness in the common case.
-- Any new behavior that changes scope, latency, or hotkeys must be reflected in `README.md`.
+- Primary command: `tile`
+- Zone wrappers: `zl2`, `zl3`, `zl4`, `zr2`, `zr3`, `zr4`
+- Main implementation: `scripts/terminal-tile-all`
+- Ghostty helper: `scripts/ghostty-window-helper`
+- Installer: `scripts/install-agent-commands`
+- Hotkey manager: `scripts/terminal-tile-hotkey`
+- Zone chooser: `scripts/terminal-tile-zone-picker`
 
-## Testing Guidelines
-No automated test framework is configured yet. Validate changes with:
+## Command Matrix
 
-1. `zsh -n` for touched scripts.
-2. `./scripts/install-agent-commands` after helper or installer changes.
-3. Manual runs on macOS with at least 2 windows open.
-4. Smoke checks across supported apps (`iTerm2` / `Terminal` / `Ghostty`) when behavior touches scope or compatibility.
-5. If behavior changes, update `README.md` accordingly.
+Use the same command words everywhere. Only the prefix changes by environment.
 
-## Commit & Pull Request Guidelines
-Recent history follows Conventional Commit prefixes (`feat:`, `docs:`). Continue this style:
+| Environment | Valid form |
+|-------------|------------|
+| Shell | `tile`, `zl2`, `zr3` |
+| Claude Code | `/tile`, `/zl2`, `/zr3` |
+| OpenClaw | `/tile`, `/zl2`, `/zr3` |
+| Codex | `/prompts:tile`, `/prompts:zl2`, `/prompts:zr3` |
 
-- Example: `feat: add current-app tiling scope`
-- Example: `docs: clarify TILE_SCOPE behavior`
+Important:
+- Do not document shell commands with a leading `/`
+- `/zl2` is invalid in `zsh` and is interpreted as an absolute path
 
-PRs should include:
-- a concise summary of user-visible changes,
-- validation steps and environment (macOS/app versions),
-- before/after terminal output when behavior or latency changes,
-- linked issue(s) when applicable.
+## Scope Model
 
-## Security & Configuration Tips
-- Do not commit machine-specific absolute paths unless intentionally required.
-- Keep AppleScript interactions limited to terminal apps and window management scope.
-- Document new `TILE_*` environment variables and config-file behavior in `README.md`.
+Default:
+- `TILE_SCOPE=current`
+
+Meaning:
+- `current` = current terminal app, not current window
+- `all` = all supported terminal apps
+
+Supported apps:
+- `iTerm2`
+- `Terminal`
+- `Ghostty`
+
+Performance expectation:
+- `current` should be the fast path
+- `all` is slower because it scans and moves windows across multiple apps
+
+## Install Model
+
+Primary install command:
+
+```bash
+./scripts/install-agent-commands
+```
+
+What it installs:
+- local bin commands in `~/.local/bin`
+- Claude commands in `~/.claude/commands`
+- Codex prompts in `~/.codex/prompts`
+- OpenClaw skills in `~/.openclaw/workspace/skills`
+- hotkeys via `terminal-tile-hotkey`
+- compiled Ghostty helper binary
+
+## Configuration Model
+
+Persistent config file:
+
+```bash
+~/.config/terminal-window-tiler/config
+```
+
+Recognized config:
+- `TILE_SCOPE=current`
+- `TILE_SCOPE=all`
+
+Environment variables:
+- `TILE_SCOPE`
+- `TILE_DEBUG`
+- `TILE_MODE`
+- `TILE_GAP`
+- `TILE_MARGIN_TOP`
+- `TILE_MARGIN_RIGHT`
+- `TILE_MARGIN_BOTTOM`
+- `TILE_MARGIN_LEFT`
+
+## Verification Commands
+
+Use these when validating behavior:
+
+```bash
+zsh -n scripts/terminal-tile-all
+zsh -n scripts/install-agent-commands scripts/tile scripts/zl2 scripts/zr3
+./scripts/install-agent-commands
+TILE_DEBUG=1 tile
+terminal-tile-hotkey status
+terminal-tile-hotkey zone-status
+```
+
+Ghostty-specific validation:
+
+```bash
+ghostty-window-helper list
+```
+
+## Editing Rules
+
+- Keep runtime logic in `scripts/`
+- Keep human-facing product copy in `README.md` and `README.en.md`
+- Reflect any scope, hotkey, or command-model change in the README files
+- Preserve the command-word model: `tile`, `zl2` .. `zr4`
+- Prefer deterministic behavior and explicit defaults
+
+## Commit Style
+
+Use Conventional Commits.
+
+Examples:
+- `feat: add current-app tiling scope`
+- `docs: clarify command prefixes`
+- `fix: stabilize ghostty window detection`

@@ -1,7 +1,7 @@
 # wise-terminal-tiler
 
 <p align="center">
-  <a href="./README.en.md">English</a> | <a href="./README.md">中文</a>
+  <a href="./README.en.md">English</a> | <a href="./README.md">中文</a> | <a href="./AGENTS.md">Agent / AI</a>
 </p>
 
 > A lightweight macOS utility for terminal window tiling.
