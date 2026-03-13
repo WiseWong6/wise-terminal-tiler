@@ -1,14 +1,14 @@
 # wise-terminal-tiler
 
-[中文](./README.md) | [English](./README.en.md)
+<p align="center">
+  <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
+</p>
 
 > 一个面向 macOS 的终端窗口平铺小工具。
 >
-> One shortcut to restore a scattered terminal workspace.
+> 用一个快捷键，把散乱的多个终端窗口整理成清晰可用的工作区。
 >
 > 专门为多终端、多显示器、键盘优先的工作流设计。
->
-> Purpose-built for keyboard-first terminal workflows on macOS.
 
 ![Full-screen tiling demo](./assets/demo-fullscreen.gif)
 
@@ -41,7 +41,7 @@ chmod +x ~/.local/bin/zone
 
 ---
 
-## 这解决的是什么问题 | What Problem This Solves
+## 这解决的是什么问题
 
 **如果你也这样工作**
 
@@ -49,15 +49,9 @@ chmod +x ~/.local/bin/zone
 
 然后你切到浏览器查文档、回微信、切回来——窗口乱了。手动拖拽调整？可以，但每次都要打断思路。
 
-**如果你也这样工作 | If this sounds familiar**
-
-You open another terminal window instead of splitting the current one. Claude Code feels right in Ghostty, but some tasks keep you in iTerm2. Over time, your desktop accumulates independent terminal windows like scattered scratch paper.
-
-Then you switch to the browser, check WeChat, come back—and the layout is a mess. Dragging windows around works, but it breaks your flow every single time.
-
 ---
 
-## 为什么现有方案还没完全解决 | Why Existing Tools Fall Short
+## 为什么现有方案还没完全解决
 
 | 方案 | 擅长什么 | 为什么还不够 | 这个工具补哪一段 |
 |------|---------|-------------|-----------------|
@@ -74,7 +68,7 @@ Then you switch to the browser, check WeChat, come back—and the layout is a me
 
 ---
 
-## 这个工具的边界 | What This Tool Does (and Doesn't)
+## 这个工具的边界
 
 **它做**
 - 检测当前所有 iTerm2 / Terminal / Ghostty 窗口
@@ -88,21 +82,9 @@ Then you switch to the browser, check WeChat, come back—and the layout is a me
 - 不支持远程/SSH 场景（仅面向 MacBook / macOS 本地使用）
 - 不支持 Windows 或其他非 macOS 平台
 
-**It does**
-- Detect all iTerm2 / Terminal / Ghostty windows
-- Group by display, tile into fixed layouts (2–10 windows)
-- Optional "zone mode": manage only left/right terminal zone, leave the other half for browser/chat
-- Trigger via system hotkey (default `ctrl+command+t`)
-
-**It doesn't**
-- Replace pane managers (not a tmux/Zellij alternative)
-- Manage non-terminal windows
-- Work over SSH (built for local MacBook/macOS use only)
-- Support Windows or other non-macOS platforms
-
 ---
 
-## 典型使用场景 | Typical Workflows
+## 典型使用场景
 
 **二分屏协作 | Split-screen workflow**
 - 左侧 1/2：终端上下堆叠，跑服务/测试/Claude Code
@@ -119,7 +101,7 @@ Then you switch to the browser, check WeChat, come back—and the layout is a me
 
 ---
 
-## 安装 | Install
+## 安装
 
 仅适用于 macOS / MacBook 工作流；如果你主要在 Windows 上使用终端，这个项目不是当前目标场景。
 
@@ -141,7 +123,7 @@ chmod +x ~/.local/bin/zone
 
 ---
 
-## 使用 | Usage
+## 使用
 
 ### 快捷键触发（推荐）
 
@@ -159,7 +141,7 @@ terminal-tile-hotkey set cmd+shift+t
 terminal-tile-hotkey uninstall
 ```
 
-### 分区模式 | Zone Mode
+### 分区模式
 
 适合「终端 + 浏览器/微信」桌面协作流：脚本只整理终端区，其他应用保持你手动安排的结构。
 
@@ -215,7 +197,7 @@ TILE_MODE=iterm_fast terminal-tile-all --zone 左4
 
 ---
 
-## 布局矩阵 | Layout Policy
+## 布局矩阵
 
 | 窗口数 | 布局 |
 |--------|------|
@@ -231,7 +213,7 @@ TILE_MODE=iterm_fast terminal-tile-all --zone 左4
 
 ---
 
-## 测试与兼容性 | Tested Compatibility
+## 测试与兼容性
 
 **已验证（macOS）**
 - macOS: `26.2` (`25C56`)
@@ -253,12 +235,17 @@ Ghostty 依赖辅助功能权限才能被脚本控制。若 Ghostty 窗口未被
 
 ---
 
-## 社媒与公众号 | Socials & WeChat
+## 社媒与公众号
 
-- 全网账号：`@歪斯Wise`
-- 平台：[小红书](https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73) / [Twitter(X)](https://x.com/killthewhys) / 公众号
-
-![公众号歪斯二维码](assets/wechat-wise-qr.jpg)
+<div align="center">
+  <p><code>@歪斯Wise</code></p>
+  <p>
+    <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73">小红书</a> /
+    <a href="https://x.com/killthewhys">Twitter(X)</a> /
+    公众号
+  </p>
+  <img src="assets/wechat-wise-qr.jpg" alt="公众号歪斯二维码" width="220" />
+</div>
 
 ---
 
