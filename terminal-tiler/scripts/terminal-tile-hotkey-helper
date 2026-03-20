@@ -27,10 +27,29 @@ final class ZonePickerController: NSObject, NSWindowDelegate {
   private let panel: NSPanel
   private var selectedKey: String?
 
+  private func centerPanelOnActiveScreen() {
+    let mouseLocation = NSEvent.mouseLocation
+    let targetScreen =
+      NSScreen.screens.first(where: { NSMouseInRect(mouseLocation, $0.frame, false) }) ??
+      NSScreen.main ??
+      NSScreen.screens.first
+
+    guard let targetScreen else {
+      panel.center()
+      return
+    }
+
+    let visibleFrame = targetScreen.visibleFrame
+    let panelFrame = panel.frame
+    let originX = visibleFrame.origin.x + ((visibleFrame.width - panelFrame.width) / 2)
+    let originY = visibleFrame.origin.y + ((visibleFrame.height - panelFrame.height) / 2)
+    panel.setFrameOrigin(NSPoint(x: round(originX), y: round(originY)))
+  }
+
   init(app: NSApplication, choices: [ZoneChoice]) {
     self.app = app
     self.panel = NSPanel(
-      contentRect: NSRect(x: 0, y: 0, width: 440, height: 240),
+      contentRect: NSRect(x: 0, y: 0, width: 452, height: 270),
       styleMask: [.titled, .closable],
       backing: .buffered,
       defer: false
@@ -41,51 +60,61 @@ final class ZonePickerController: NSObject, NSWindowDelegate {
     panel.isFloatingPanel = true
     panel.level = .modalPanel
     panel.delegate = self
-    panel.center()
+    panel.isReleasedWhenClosed = false
+    centerPanelOnActiveScreen()
 
-    let content = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 240))
+    let content = NSView(frame: NSRect(x: 0, y: 0, width: 452, height: 270))
+    content.wantsLayer = true
+    content.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
     panel.contentView = content
 
     let titleLabel = NSTextField(labelWithString: "选择终端分区布局")
     titleLabel.font = .boldSystemFont(ofSize: 15)
-    titleLabel.frame = NSRect(x: 24, y: 194, width: 300, height: 22)
+    titleLabel.frame = NSRect(x: 24, y: 218, width: 240, height: 22)
     content.addSubview(titleLabel)
-
-    let hintLabel = NSTextField(labelWithString: "点击任一按钮立即执行，Esc 取消")
-    hintLabel.textColor = .secondaryLabelColor
-    hintLabel.frame = NSRect(x: 24, y: 172, width: 320, height: 18)
-    content.addSubview(hintLabel)
 
     let leftHeader = NSTextField(labelWithString: "Left Zones")
     leftHeader.font = .systemFont(ofSize: 12, weight: .semibold)
     leftHeader.textColor = .secondaryLabelColor
-    leftHeader.frame = NSRect(x: 24, y: 144, width: 120, height: 18)
+    leftHeader.alignment = .left
+    leftHeader.frame = NSRect(x: 24, y: 186, width: 160, height: 18)
     content.addSubview(leftHeader)
 
     let rightHeader = NSTextField(labelWithString: "Right Zones")
     rightHeader.font = .systemFont(ofSize: 12, weight: .semibold)
     rightHeader.textColor = .secondaryLabelColor
-    rightHeader.frame = NSRect(x: 226, y: 144, width: 120, height: 18)
+    rightHeader.alignment = .right
+    rightHeader.frame = NSRect(x: 268, y: 186, width: 160, height: 18)
     content.addSubview(rightHeader)
 
-    for (index, choice) in choices.enumerated() {
-      let column = index % 2
-      let row = index / 2
-      let button = NSButton(title: choice.label.replacingOccurrences(of: " - ", with: "  "), target: self, action: #selector(selectZone(_:)))
+    for choice in choices {
+      let isLeftColumn = choice.key.hasPrefix("zl")
+      let row: Int
+      switch choice.key {
+      case "zl2", "zr2":
+        row = 0
+      case "zl3", "zr3":
+        row = 1
+      default:
+        row = 2
+      }
+
+      let button = NSButton(title: choice.label, target: self, action: #selector(selectZone(_:)))
       button.identifier = NSUserInterfaceItemIdentifier(choice.key)
       button.frame = NSRect(
-        x: column == 0 ? 24 : 226,
-        y: 104 - (row * 36),
-        width: 190,
-        height: 30
+        x: isLeftColumn ? 24 : 248,
+        y: 142 - (row * 42),
+        width: 180,
+        height: 32
       )
       button.bezelStyle = .rounded
+      button.font = .systemFont(ofSize: 14, weight: .medium)
       button.keyEquivalent = ""
       content.addSubview(button)
     }
 
     let cancelButton = NSButton(title: "取消", target: self, action: #selector(cancel(_:)))
-    cancelButton.frame = NSRect(x: 346, y: 16, width: 72, height: 28)
+    cancelButton.frame = NSRect(x: 362, y: 18, width: 66, height: 28)
     cancelButton.bezelStyle = .rounded
     cancelButton.keyEquivalent = "\u{1b}"
     content.addSubview(cancelButton)
@@ -123,12 +152,12 @@ let supportedBundles: [String: String] = [
 ]
 
 let zoneChoices: [ZoneChoice] = [
-  ZoneChoice(key: "zl2", label: "zl2 - 左边分屏 2 分之 1"),
-  ZoneChoice(key: "zl3", label: "zl3 - 左边分屏 3 分之 1"),
-  ZoneChoice(key: "zl4", label: "zl4 - 左边分屏 4 分之 1"),
-  ZoneChoice(key: "zr2", label: "zr2 - 右边分屏 2 分之 1"),
-  ZoneChoice(key: "zr3", label: "zr3 - 右边分屏 3 分之 1"),
-  ZoneChoice(key: "zr4", label: "zr4 - 右边分屏 4 分之 1"),
+  ZoneChoice(key: "zl2", label: "zl2-左 1/2"),
+  ZoneChoice(key: "zl3", label: "zl3-左 1/3"),
+  ZoneChoice(key: "zl4", label: "zl4-左 1/4"),
+  ZoneChoice(key: "zr2", label: "zr2-右 1/2"),
+  ZoneChoice(key: "zr3", label: "zr3-右 1/3"),
+  ZoneChoice(key: "zr4", label: "zr4-右 1/4"),
 ]
 
 func stderr(_ text: String) {
