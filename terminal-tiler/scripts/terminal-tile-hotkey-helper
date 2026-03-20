@@ -22,6 +22,100 @@ struct ZoneChoice {
   let label: String
 }
 
+final class ZonePickerController: NSObject, NSWindowDelegate {
+  private let app: NSApplication
+  private let panel: NSPanel
+  private var selectedKey: String?
+
+  init(app: NSApplication, choices: [ZoneChoice]) {
+    self.app = app
+    self.panel = NSPanel(
+      contentRect: NSRect(x: 0, y: 0, width: 440, height: 240),
+      styleMask: [.titled, .closable],
+      backing: .buffered,
+      defer: false
+    )
+    super.init()
+
+    panel.title = "Terminal Tile Zone"
+    panel.isFloatingPanel = true
+    panel.level = .modalPanel
+    panel.delegate = self
+    panel.center()
+
+    let content = NSView(frame: NSRect(x: 0, y: 0, width: 440, height: 240))
+    panel.contentView = content
+
+    let titleLabel = NSTextField(labelWithString: "选择终端分区布局")
+    titleLabel.font = .boldSystemFont(ofSize: 15)
+    titleLabel.frame = NSRect(x: 24, y: 194, width: 300, height: 22)
+    content.addSubview(titleLabel)
+
+    let hintLabel = NSTextField(labelWithString: "点击任一按钮立即执行，Esc 取消")
+    hintLabel.textColor = .secondaryLabelColor
+    hintLabel.frame = NSRect(x: 24, y: 172, width: 320, height: 18)
+    content.addSubview(hintLabel)
+
+    let leftHeader = NSTextField(labelWithString: "Left Zones")
+    leftHeader.font = .systemFont(ofSize: 12, weight: .semibold)
+    leftHeader.textColor = .secondaryLabelColor
+    leftHeader.frame = NSRect(x: 24, y: 144, width: 120, height: 18)
+    content.addSubview(leftHeader)
+
+    let rightHeader = NSTextField(labelWithString: "Right Zones")
+    rightHeader.font = .systemFont(ofSize: 12, weight: .semibold)
+    rightHeader.textColor = .secondaryLabelColor
+    rightHeader.frame = NSRect(x: 226, y: 144, width: 120, height: 18)
+    content.addSubview(rightHeader)
+
+    for (index, choice) in choices.enumerated() {
+      let column = index % 2
+      let row = index / 2
+      let button = NSButton(title: choice.label.replacingOccurrences(of: " - ", with: "  "), target: self, action: #selector(selectZone(_:)))
+      button.identifier = NSUserInterfaceItemIdentifier(choice.key)
+      button.frame = NSRect(
+        x: column == 0 ? 24 : 226,
+        y: 104 - (row * 36),
+        width: 190,
+        height: 30
+      )
+      button.bezelStyle = .rounded
+      button.keyEquivalent = ""
+      content.addSubview(button)
+    }
+
+    let cancelButton = NSButton(title: "取消", target: self, action: #selector(cancel(_:)))
+    cancelButton.frame = NSRect(x: 346, y: 16, width: 72, height: 28)
+    cancelButton.bezelStyle = .rounded
+    cancelButton.keyEquivalent = "\u{1b}"
+    content.addSubview(cancelButton)
+  }
+
+  func run() -> String? {
+    app.setActivationPolicy(.accessory)
+    app.activate(ignoringOtherApps: true)
+    panel.makeKeyAndOrderFront(nil)
+    app.runModal(for: panel)
+    panel.orderOut(nil)
+    return selectedKey
+  }
+
+  @objc private func selectZone(_ sender: NSButton) {
+    selectedKey = sender.identifier?.rawValue
+    app.stopModal()
+  }
+
+  @objc private func cancel(_ sender: Any?) {
+    selectedKey = nil
+    app.stopModal()
+  }
+
+  func windowWillClose(_ notification: Notification) {
+    selectedKey = nil
+    app.stopModal()
+  }
+}
+
 let supportedBundles: [String: String] = [
   "com.googlecode.iterm2": "iTerm2",
   "com.apple.Terminal": "Terminal",
@@ -95,30 +189,8 @@ func runCommand(path: String, args: [String], extraEnvironment: [String: String]
 
 func pickZoneInteractively() -> String? {
   let app = NSApplication.shared
-  app.setActivationPolicy(.accessory)
-  app.activate(ignoringOtherApps: true)
-
-  let alert = NSAlert()
-  alert.messageText = "Terminal Tile Zone"
-  alert.informativeText = "选择终端分区布局"
-  alert.addButton(withTitle: "执行")
-  alert.addButton(withTitle: "取消")
-
-  let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 280, height: 30), pullsDown: false)
-  popup.addItems(withTitles: zoneChoices.map(\.label))
-  popup.selectItem(at: 0)
-  alert.accessoryView = popup
-
-  let response = alert.runModal()
-  guard response == .alertFirstButtonReturn else {
-    return nil
-  }
-
-  let index = popup.indexOfSelectedItem
-  guard zoneChoices.indices.contains(index) else {
-    return nil
-  }
-  return zoneChoices[index].key
+  let picker = ZonePickerController(app: app, choices: zoneChoices)
+  return picker.run()
 }
 
 func commandFrontmostApp() {
