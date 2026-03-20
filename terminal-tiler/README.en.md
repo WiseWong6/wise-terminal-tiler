@@ -173,8 +173,7 @@ TILE_DEBUG=1 terminal-tile-all
 TILE_MODE=iterm_fast terminal-tile-all
 ```
 
-- The hotkey path prefers the compiled `terminal-tile-hotkey-helper` to avoid duplicate frontmost-app detection
-- For `TILE_SCOPE=current` in iTerm2 or Terminal, the hotkey flow now auto-enables the fast path
+- The default execution path now goes through the compiled Swift core, so both CLI and hotkeys no longer depend on the old AppleScript dispatcher
 
 ---
 
@@ -212,7 +211,7 @@ Current practical guidance:
 
 ### Permission note
 
-The hotkey only works on the terminal windows you are actively using. iTerm2 and Ghostty both rely on Accessibility permission before the script can control them:
+The hotkey only works on the terminal windows you are actively using. iTerm2, Terminal, and Ghostty rely on Accessibility permission before the script can control them:
 
 - System Settings -> Privacy & Security -> Accessibility -> add Ghostty
 
