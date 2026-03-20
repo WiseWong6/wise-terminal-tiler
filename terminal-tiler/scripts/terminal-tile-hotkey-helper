@@ -242,9 +242,9 @@ func commandRun(mode: String) throws -> Never {
     exit(0)
   }
 
-  let commandPath = resolveCommand("terminal-tile-all") ?? resolveCommand("tile")
+  let commandPath = resolveCommand("terminal-tile-core")
   guard let commandPath else {
-    throw HelperError.commandNotFound("terminal-tile-all")
+    throw HelperError.commandNotFound("terminal-tile-core")
   }
 
   switch mode {

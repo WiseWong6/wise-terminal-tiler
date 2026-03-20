@@ -31,17 +31,17 @@ esac
 
 SCRIPT_DIR="${0:A:h}"
 
-if [[ -x "$SCRIPT_DIR/terminal-tile-all" ]]; then
-  exec "$SCRIPT_DIR/terminal-tile-all" "$@"
+if [[ -x "$SCRIPT_DIR/terminal-tile-core" ]]; then
+  exec "$SCRIPT_DIR/terminal-tile-core" "$@"
 fi
 
-if [[ -x "$HOME/.local/bin/terminal-tile-all" ]]; then
-  exec "$HOME/.local/bin/terminal-tile-all" "$@"
+if [[ -x "$HOME/.local/bin/terminal-tile-core" ]]; then
+  exec "$HOME/.local/bin/terminal-tile-core" "$@"
 fi
 
-if command -v terminal-tile-all >/dev/null 2>&1; then
-  exec "$(command -v terminal-tile-all)" "$@"
+if command -v terminal-tile-core >/dev/null 2>&1; then
+  exec "$(command -v terminal-tile-core)" "$@"
 fi
 
-echo "terminal-tile-all 未找到，请先安装到 ~/.local/bin/terminal-tile-all。" >&2
+echo "terminal-tile-core 未找到，请先安装到 ~/.local/bin/terminal-tile-core。" >&2
 exit 1

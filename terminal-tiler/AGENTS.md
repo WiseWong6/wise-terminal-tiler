@@ -17,7 +17,8 @@ Primary user goal:
 
 - Primary command: `tile`
 - Zone wrappers: `zl2`, `zl3`, `zl4`, `zr2`, `zr3`, `zr4`
-- Main implementation: `scripts/terminal-tile-all`
+- Main implementation: `scripts/terminal-tile-core`
+- Legacy fallback reference: `scripts/terminal-tile-all`
 - Ghostty helper: `scripts/ghostty-window-helper`
 - Hotkey helper: `scripts/terminal-tile-hotkey-helper`
 - Installer: `scripts/install-agent-commands`
@@ -71,6 +72,7 @@ What it installs:
 - Codex prompts in `~/.codex/prompts`
 - OpenClaw skills in `~/.openclaw/workspace/skills`
 - hotkeys via `terminal-tile-hotkey`
+- compiled Swift tiling core binary
 - compiled hotkey helper binary when `swiftc` is available
 - compiled Ghostty helper binary
 

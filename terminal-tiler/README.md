@@ -218,7 +218,7 @@ TILE_MODE=iterm_fast tile
 
 - 默认 `TILE_SCOPE=current`
 - 这意味着命令只整理当前终端 app，速度更快，适合绝大多数场景
-- 热键路径会优先使用编译后的 `terminal-tile-hotkey-helper`，避免重复前台识别；在 `current + iTerm2/Terminal` 下会自动启用快速路径
+- 默认执行路径已切到编译后的 Swift core，CLI 和热键都不再依赖原来的 AppleScript 主调度
 - 如果你确实需要把 `Ghostty + iTerm2 + Terminal` 一起编排，再显式使用 `TILE_SCOPE=all`
 - 跨终端模式会更慢，因为脚本必须同时探测多个终端并分别移动窗口
 
@@ -295,7 +295,7 @@ EOF
 
 **权限说明**
 
-快捷键只基于当前的终端生效，iTerm/Ghostty都依赖辅助功能权限才能被脚本控制。
+快捷键只基于当前的终端生效，iTerm2 / Terminal / Ghostty 都依赖辅助功能权限才能被脚本控制。
 - 系统设置 → 隐私与安全性 → 辅助功能 → 添加 Ghostty
 
 ---
