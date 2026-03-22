@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Play, Loader2 } from 'lucide-react';
-import { useStore, buildModelKey, getOpenModelsForProvider } from '../state/store';
-import { getTextProviderConfigs } from '../services/configAdapter';
-import { DEFAULT_TEXT_PROVIDERS } from '../constants';
+import { useStore, buildModelKey } from '../state/store';
+import { getUnifiedProviders } from '../services/configAdapter';
 import { Task, PromptGroup } from '../types';
 import { generateId } from '../utils/helpers';
 
@@ -13,45 +12,25 @@ const PromptEditor: React.FC = () => {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
-  // Get available text models
+  // Get available LLM models from unified providers
   const textModels = useMemo(() => {
-    const configs = getTextProviderConfigs();
+    const providers = getUnifiedProviders();
     const models: Array<{ providerId: string; providerLabel: string; modelId: string; modelLabel: string }> = [];
-
-    // From saved configs
-    for (const config of configs) {
-      if (!config.enabled) continue;
-      for (const model of config.models) {
-        if (!model.enabled) continue;
+    
+    for (const provider of providers) {
+      if (!provider.enabled) continue;
+      for (const model of provider.models) {
+        if (!model.enabled || model.capabilities !== 'llm') continue;
         models.push({
-          providerId: config.id,
-          providerLabel: config.label,
+          providerId: provider.id,
+          providerLabel: provider.label,
           modelId: model.id,
           modelLabel: model.label,
         });
       }
     }
-
-    // If no configs saved, use defaults (with SiliconFlow key if available)
-    if (models.length === 0) {
-      for (const provider of DEFAULT_TEXT_PROVIDERS) {
-        for (const model of provider.models) {
-          models.push({
-            providerId: provider.id,
-            providerLabel: provider.label,
-            modelId: model.id,
-            modelLabel: model.label,
-          });
-        }
-      }
-    }
-
-    // Also include OCR providers as text models (SiliconFlow has text models)
-    const ocrTextModels = getOpenModelsForProvider('siliconflow', state.enabledModelsByProvider);
-    // Don't add OCR models as text models - they are separate
-
     return models;
-  }, [state.enabledModelsByProvider]);
+  }, []);
 
   const toggleModel = (key: string) => {
     setSelectedModels(prev =>

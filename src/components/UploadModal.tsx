@@ -1,20 +1,31 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Task, SourceFile, UploadConfigItem } from '../types';
 import { generateId, formatFileSize } from '../utils/helpers';
-import { getAvailableOcrModels } from '../services/configAdapter';
-import { useStore, buildModelKey, getOpenModelsForProvider } from '../state/store';
+import { getUnifiedProviders } from '../services/configAdapter';
+import { useStore, buildModelKey } from '../state/store';
 
 const UploadModal: React.FC = () => {
   const { state, dispatch, taskQueue } = useStore();
 
-  // --------------- Available models ---------------
-  const uploadAvailableModels = useMemo(
-    () =>
-      state.enabledProviderIds.flatMap((pid) =>
-        getOpenModelsForProvider(pid, state.enabledModelsByProvider)
-      ),
-    [state.enabledProviderIds, state.enabledModelsByProvider]
-  );
+  // --------------- Available models (from unified providers) ---------------
+  const uploadAvailableModels = useMemo(() => {
+    const providers = getUnifiedProviders();
+    const models: Array<{ providerId: string; providerLabel: string; modelId: string; modelLabel: string }> = [];
+    
+    for (const provider of providers) {
+      if (!provider.enabled) continue;
+      for (const model of provider.models) {
+        if (!model.enabled || model.capabilities !== 'ocr') continue;
+        models.push({
+          providerId: provider.id,
+          providerLabel: provider.label,
+          modelId: model.id,
+          modelLabel: model.label,
+        });
+      }
+    }
+    return models;
+  }, []);
 
   // --------------- Local page-range state ---------------
   // Map from UploadConfigItem.id -> { rangeMode, customPages }

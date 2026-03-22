@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore, buildModelKey } from '../state/store';
-import { getTextProviderConfigs } from '../services/configAdapter';
-import { DEFAULT_TEXT_PROVIDERS } from '../constants';
+import { getUnifiedProviders } from '../services/configAdapter';
 import { Task, PromptGroup, VariableType, VariableMeta } from '../types';
 import { generateId } from '../utils/helpers';
 import PromptInputPanel from './PromptInputPanel';
@@ -29,37 +28,23 @@ const LLMWorkspace: React.FC = () => {
   const [varValues, setVarValues] = useState<Record<string, string>>({});
   const [variableMeta, setVariableMeta] = useState<Record<string, VariableMeta>>({});
 
-  // Get available text models
+  // Get available LLM models from unified providers
   const textModels = useMemo(() => {
-    const configs = getTextProviderConfigs();
+    const providers = getUnifiedProviders();
     const models: Array<{ providerId: string; providerLabel: string; modelId: string; modelLabel: string }> = [];
-
-    for (const config of configs) {
-      if (!config.enabled) continue;
-      for (const model of config.models) {
-        if (!model.enabled) continue;
+    
+    for (const provider of providers) {
+      if (!provider.enabled) continue;
+      for (const model of provider.models) {
+        if (!model.enabled || model.capabilities !== 'llm') continue;
         models.push({
-          providerId: config.id,
-          providerLabel: config.label,
+          providerId: provider.id,
+          providerLabel: provider.label,
           modelId: model.id,
           modelLabel: model.label,
         });
       }
     }
-
-    if (models.length === 0) {
-      for (const provider of DEFAULT_TEXT_PROVIDERS) {
-        for (const model of provider.models) {
-          models.push({
-            providerId: provider.id,
-            providerLabel: provider.label,
-            modelId: model.id,
-            modelLabel: model.label,
-          });
-        }
-      }
-    }
-
     return models;
   }, []);
 
