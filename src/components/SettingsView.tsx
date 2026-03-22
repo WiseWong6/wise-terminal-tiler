@@ -455,13 +455,11 @@ const ProviderDetail: React.FC<{
             {provider.models.filter(m => m.enabled).length} 已启用 / {provider.models.length} 总计
           </span>
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="p-4 space-y-4 bg-slate-50/50">
           {provider.models.map(model => (
-            <ModelAccordionRow
+            <ModelConfigCard
               key={model.id}
               model={model}
-              expanded={expandedModelId === model.id}
-              onToggleExpand={() => setExpandedModelId(prev => prev === model.id ? null : model.id)}
               onToggle={() => onToggleModel(model.id)}
               onUpdate={u => onUpdateModel(model.id, u)}
               onRemove={() => onRemoveModel(model.id)}
@@ -525,104 +523,90 @@ const ProviderDetail: React.FC<{
   );
 };
 
-// ── ModelAccordionRow ────────────────────────────────────────────────────────
-const ModelAccordionRow: React.FC<{
+// ── ModelConfigCard (Flattened Form) ─────────────────────────────────────────
+const ModelConfigCard: React.FC<{
   model: UnifiedModel;
-  expanded: boolean;
-  onToggleExpand: () => void;
   onToggle: () => void;
   onUpdate: (u: Partial<UnifiedModel>) => void;
   onRemove: () => void;
   readonly: boolean;
-}> = ({ model, expanded, onToggleExpand, onToggle, onUpdate, onRemove, readonly }) => {
+}> = ({ model, onToggle, onUpdate, onRemove, readonly }) => {
   return (
-    <div className={`transition-colors ${expanded ? 'bg-slate-50/80' : ''}`}>
-      {/* Summary row */}
-      <div className="flex items-center gap-2 px-3 py-2.5 group">
+    <div className={`bg-white rounded-xl border transition-all ${model.enabled ? 'border-indigo-100 shadow-sm' : 'border-slate-200 opacity-60'}`}>
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
         <input type="checkbox" checked={model.enabled} onChange={onToggle}
-          className="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded cursor-pointer shrink-0" />
-
-        {/* Model ID — editable inline */}
+          className="w-4 h-4 text-indigo-600 border-slate-300 rounded cursor-pointer shrink-0" />
+        
         <input
           type="text"
           value={model.id}
           onChange={e => !readonly && onUpdate({ id: e.target.value })}
           readOnly={readonly}
-          className={`text-xs font-mono text-slate-700 bg-transparent border-b border-transparent min-w-0 flex-1 focus:outline-none transition-all ${
+          className={`text-sm font-mono text-slate-800 bg-transparent border-b border-transparent min-w-0 flex-1 focus:outline-none transition-all ${
             readonly ? 'cursor-default' : 'hover:border-slate-200 focus:border-indigo-400 cursor-text'
           }`}
           title="Model ID"
         />
 
-        {/* Display name — editable inline */}
         <input
           type="text"
           value={model.label}
           onChange={e => !readonly && onUpdate({ label: e.target.value })}
           readOnly={readonly}
-          className={`text-xs font-medium text-slate-600 bg-transparent border-b border-transparent w-28 focus:outline-none transition-all ${
+          className={`text-xs font-semibold text-slate-600 bg-transparent border-b border-transparent w-32 focus:outline-none transition-all ${
             readonly ? 'cursor-default' : 'hover:border-slate-200 focus:border-indigo-400 cursor-text'
           }`}
           title="显示名称"
         />
 
-        {/* Capability badges */}
-        <div className="flex items-center gap-1 shrink-0">
-          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${model.capabilities === 'llm' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
-            {model.capabilities.toUpperCase()}
-          </span>
-          {model.thinking && <span title="思考模式" className="text-[9px] px-1 py-0.5 bg-orange-50 text-orange-500 rounded font-bold border border-orange-100">T</span>}
-          {model.tools && <span title="工具调用" className="text-[9px] px-1 py-0.5 bg-teal-50 text-teal-600 rounded font-bold border border-teal-100">F</span>}
-          {model.vision && <span title="视觉处理" className="text-[9px] px-1 py-0.5 bg-sky-50 text-sky-600 rounded font-bold border border-sky-100">V</span>}
-        </div>
+        <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${model.capabilities === 'llm' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
+          {model.capabilities.toUpperCase()}
+        </span>
 
-        {/* Controls */}
         {!readonly && (
-          <button onClick={onRemove} className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all shrink-0">
-            <Trash2 size={12} />
+          <button onClick={onRemove} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0">
+            <Trash2 size={14} />
           </button>
         )}
-        <button onClick={onToggleExpand} className="p-0.5 text-slate-400 hover:text-indigo-600 transition-colors shrink-0">
-          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </button>
       </div>
 
-      {/* Expanded capabilities panel */}
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 space-y-4 border-t border-slate-100 animate-in slide-in-from-top-1 duration-150">
-          <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider pt-1">模型能力配置</p>
-          <div className="grid grid-cols-3 gap-2">
-            <Toggle value={!!model.thinking} onChange={v => onUpdate({ thinking: v })}
-              label="深度思考" hint="Extended Thinking" icon={<Brain size={13} />} />
-            <Toggle value={!!model.tools} onChange={v => onUpdate({ tools: v })}
-              label="工具调用" hint="Function Calling" icon={<Wrench size={13} />} />
-            <Toggle value={!!model.vision} onChange={v => onUpdate({ vision: v })}
-              label="视觉处理" hint="Vision Input" icon={<EyeIcon size={13} />} />
+      {/* Flattened Config Form */}
+      <div className="p-4 space-y-4">
+        {/* Row 1: Toggles */}
+        <div className="grid grid-cols-3 gap-3">
+          <Toggle value={!!model.thinking} onChange={v => onUpdate({ thinking: v })}
+            label="深度思考" hint="Extended Thinking" icon={<Brain size={14} />} />
+          <Toggle value={!!model.tools} onChange={v => onUpdate({ tools: v })}
+            label="工具调用" hint="Function Calling" icon={<Wrench size={14} />} />
+          <Toggle value={!!model.vision} onChange={v => onUpdate({ vision: v })}
+            label="视觉处理" hint="Vision Input" icon={<EyeIcon size={14} />} />
+        </div>
+
+        {/* Row 2: Tokens */}
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+              最大输出 Tokens
+              <span className="ml-2 font-mono text-indigo-500 normal-case">{(model.maxOutputTokens ?? 8192).toLocaleString()}</span>
+            </label>
+            <input type="number" min={256} max={128000} step={256} value={model.maxOutputTokens ?? 8192}
+              onChange={e => onUpdate({ maxOutputTokens: parseInt(e.target.value) || 8192 })}
+              className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
+            <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">普通模型推荐 4K–8K。<br/>思考模型 (由于携带思维链) 建议 32K–64K。</p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                最大输出 Tokens
-                <span className="ml-2 font-mono text-indigo-500 normal-case">{(model.maxOutputTokens ?? 8192).toLocaleString()}</span>
-              </label>
-              <input type="number" min={256} max={128000} step={256} value={model.maxOutputTokens ?? 8192}
-                onChange={e => onUpdate({ maxOutputTokens: parseInt(e.target.value) || 8192 })}
-                className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono" />
-              <p className="text-[10px] text-slate-400 mt-1">推荐: 普通 4096–8192 · 思考模型 32768–64000</p>
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
-                上下文窗口
-                <span className="ml-2 font-mono text-indigo-500 normal-case">{((model.contextWindow ?? 128000) / 1000).toFixed(0)}K</span>
-              </label>
-              <input type="number" min={4096} max={2000000} step={4096} value={model.contextWindow ?? 128000}
-                onChange={e => onUpdate({ contextWindow: parseInt(e.target.value) || 128000 })}
-                className="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono" />
-              <p className="text-[10px] text-slate-400 mt-1">如: 128000 = 128K · 1000000 = 1M</p>
-            </div>
+          <div>
+            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
+              总上下文窗口
+              <span className="ml-2 font-mono text-indigo-500 normal-case">{((model.contextWindow ?? 128000) / 1000).toFixed(0)}K</span>
+            </label>
+            <input type="number" min={4096} max={2000000} step={4096} value={model.contextWindow ?? 128000}
+              onChange={e => onUpdate({ contextWindow: parseInt(e.target.value) || 128000 })}
+              className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
+            <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">设定前端截断拦截上限。<br/>(如: 128000 = 128K)</p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 };
