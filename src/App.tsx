@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect } from 'react';
-import { Upload, Settings, Menu } from 'lucide-react';
+import { Upload, Settings } from 'lucide-react';
 import { useStore } from './state/store';
 import Sidebar from './components/Sidebar';
 import ComparisonGrid from './components/ComparisonGrid';
@@ -85,14 +85,6 @@ const App: React.FC = () => {
         {/* Header */}
         <header className="h-14 border-b border-slate-200/80 bg-white/80 backdrop-blur-md flex items-center justify-between px-4 shadow-sm z-10 flex-shrink-0 select-none">
           <div className="flex items-center gap-2.5">
-            {!state.sidebarOpen && (
-              <button
-                onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-600 transition-all duration-150"
-              >
-                <Menu size={18} />
-              </button>
-            )}
             <h1 className="text-base font-bold text-slate-800">
               Model Evaluation Workbench
             </h1>
