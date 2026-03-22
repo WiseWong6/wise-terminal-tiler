@@ -65,7 +65,7 @@ const PromptInputPanel: React.FC<Props> = ({
             <textarea
               value={userPrompt}
               onChange={e => onUserPromptChange(e.target.value)}
-              placeholder={'输入要测试的提示词内容...\n\n使用 {{变量名}} 语法插入动态变量'}
+              placeholder={'输入要测试的提示词内容...\n\n使用 {{变量名}} 语法插入变量，支持中英文'}
               className="w-full h-[200px] p-3 text-sm rounded-xl border border-slate-200 bg-white resize-none outline-none transition-all duration-200
                 placeholder:text-slate-300 text-slate-700 leading-relaxed
                 focus:border-indigo-300 focus:ring-4 focus:ring-indigo-500/10
@@ -91,7 +91,7 @@ const PromptInputPanel: React.FC<Props> = ({
           {extractedVars.length === 0 ? (
             <div className="p-3 rounded-xl border border-dashed border-slate-200 bg-slate-50/50">
               <p className="text-xs text-slate-400 leading-relaxed">
-                在 Prompt 中使用 <code className="text-amber-600 font-mono bg-amber-50 px-1 rounded">{'{{变量名}}'}</code> 语法提取变量
+                在 Prompt 中使用 <code className="text-amber-600 font-mono bg-amber-50 px-1 rounded">{'{{变量名}}'}</code> 语法提取变量，支持中英文
               </p>
             </div>
           ) : (

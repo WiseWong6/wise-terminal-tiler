@@ -35,7 +35,7 @@ interface Props {
   onToolsChange: (v: boolean) => void;
 }
 
-const VARIABLE_NAME_RE = /^[A-Za-z][A-Za-z0-9_]*$/;
+const VARIABLE_NAME_RE = /^[A-Za-z\u4e00-\u9fa5_][A-Za-z0-9_\u4e00-\u9fa5]*$/;
 
 const typeLabels: Record<VariableType, string> = {
   text: '文本',
@@ -94,7 +94,7 @@ const ModelConfigPanel: React.FC<Props> = ({
       return;
     }
     if (!VARIABLE_NAME_RE.test(newName)) {
-      setError('格式错误：必须以字母开头，只能包含字母、数字、下划线');
+      setError('格式错误：必须以字母或中文开头，只能包含字母、数字、下划线');
       return;
     }
     if (newName !== oldName && extractedVars.includes(newName)) {

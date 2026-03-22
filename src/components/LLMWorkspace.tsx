@@ -60,14 +60,19 @@ const LLMWorkspace: React.FC = () => {
     return models;
   }, []);
 
-  // Extract {{变量名}} variables from prompts
+  // Extract {{变量名}} variables from prompts (supports English and Chinese)
   const extractedVars = useMemo(() => {
-    const re = /\{\{([A-Za-z][A-Za-z0-9_]*)\}\}/g;
+    const re = /\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}/g;
+    const cnRe = /\{\{([\u4e00-\u9fa5][A-Za-z0-9_\u4e00-\u9fa5]*)\}\}/g;
     const found = new Set<string>();
     for (const text of [systemPrompt, userPrompt]) {
       let m;
-      const r = new RegExp(re.source, 'g');
-      while ((m = r.exec(text)) !== null) found.add(m[1]);
+      // Match English variables
+      const r1 = new RegExp(re.source, 'g');
+      while ((m = r1.exec(text)) !== null) found.add(m[1]);
+      // Match Chinese variables
+      const r2 = new RegExp(cnRe.source, 'g');
+      while ((m = r2.exec(text)) !== null) found.add(m[1]);
     }
     return [...found];
   }, [systemPrompt, userPrompt]);
