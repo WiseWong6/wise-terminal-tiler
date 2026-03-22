@@ -37,7 +37,7 @@ const LabeledSlider: React.FC<{
 const Toggle: React.FC<{ value: boolean; onChange: (v: boolean) => void; label: string; icon?: React.ReactNode; hint?: string }> = ({ value, onChange, label, icon, hint }) => (
   <div
     onClick={() => onChange(!value)}
-    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border cursor-pointer select-none transition-all ${
+    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl border cursor-pointer select-none transition-all ${
       value ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
     }`}
   >
@@ -571,40 +571,35 @@ const ModelConfigCard: React.FC<{
         )}
       </div>
 
-      {/* Flattened Config Form */}
-      <div className="p-4 space-y-4">
-        {/* Row 1: Toggles */}
-        <div className="grid grid-cols-3 gap-3">
+      {/* Flattened Config Form - Single Row */}
+      <div className="px-4 pb-4 pt-3 flex items-end gap-3">
+        <div className="flex gap-2 shrink-0">
           <Toggle value={!!model.thinking} onChange={v => onUpdate({ thinking: v })}
-            label="深度思考" hint="Extended Thinking" icon={<Brain size={14} />} />
+            label="深度思考" hint="Extended Thinking" icon={<Brain size={12} />} />
           <Toggle value={!!model.tools} onChange={v => onUpdate({ tools: v })}
-            label="工具调用" hint="Function Calling" icon={<Wrench size={14} />} />
+            label="工具调用" hint="Function Calling" icon={<Wrench size={12} />} />
           <Toggle value={!!model.vision} onChange={v => onUpdate({ vision: v })}
-            label="视觉处理" hint="Vision Input" icon={<EyeIcon size={14} />} />
+            label="视觉处理" hint="Vision Input" icon={<EyeIcon size={12} />} />
         </div>
 
-        {/* Row 2: Tokens */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-              最大输出 Tokens
-              <span className="ml-2 font-mono text-indigo-500 normal-case">{(model.maxOutputTokens ?? 8192).toLocaleString()}</span>
-            </label>
-            <input type="number" min={256} max={128000} step={256} value={model.maxOutputTokens ?? 8192}
-              onChange={e => onUpdate({ maxOutputTokens: parseInt(e.target.value) || 8192 })}
-              className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
-            <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">普通模型推荐 4K–8K。<br/>思考模型 (由于携带思维链) 建议 32K–64K。</p>
+        <div className="flex-1 ml-2">
+          <div className="flex justify-between items-end mb-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">最大输出 Tokens</label>
+            <span className="text-[10px] font-mono text-indigo-500 font-bold leading-none">{(model.maxOutputTokens ?? 8192).toLocaleString()}</span>
           </div>
-          <div>
-            <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1.5">
-              总上下文窗口
-              <span className="ml-2 font-mono text-indigo-500 normal-case">{((model.contextWindow ?? 128000) / 1000).toFixed(0)}K</span>
-            </label>
-            <input type="number" min={4096} max={2000000} step={4096} value={model.contextWindow ?? 128000}
-              onChange={e => onUpdate({ contextWindow: parseInt(e.target.value) || 128000 })}
-              className="w-full text-xs px-3 py-2.5 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
-            <p className="text-[10px] text-slate-400 mt-1.5 leading-tight">设定前端截断拦截上限。<br/>(如: 128000 = 128K)</p>
+          <input type="number" min={256} max={128000} step={256} value={model.maxOutputTokens ?? 8192}
+            onChange={e => onUpdate({ maxOutputTokens: parseInt(e.target.value) || 8192 })}
+            className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
+        </div>
+        
+        <div className="flex-1">
+          <div className="flex justify-between items-end mb-1.5">
+            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">上下文</label>
+            <span className="text-[10px] font-mono text-indigo-500 font-bold leading-none">{((model.contextWindow ?? 128000) / 1000).toFixed(0)}K</span>
           </div>
+          <input type="number" min={4096} max={2000000} step={4096} value={model.contextWindow ?? 128000}
+            onChange={e => onUpdate({ contextWindow: parseInt(e.target.value) || 128000 })}
+            className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
         </div>
       </div>
     </div>
