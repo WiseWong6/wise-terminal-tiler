@@ -252,9 +252,10 @@ const ProvidersTab: React.FC<ProvidersTabProps> = ({
             const ocrs = p.models.filter(m => m.enabled && m.capabilities === 'ocr');
             const isActive = selectedId === p.id && !addingProvider;
             return (
-              <button key={p.id} onClick={() => { setSelectedId(p.id); setAddingProvider(false); }}
-                className={`w-full text-left px-3 py-3 border-l-2 transition-all ${isActive ? 'bg-indigo-50/80 border-indigo-500' : 'border-transparent hover:bg-slate-50 hover:border-slate-200'}`}>
-                <div className="flex items-center gap-1.5 mb-1.5">
+              <div key={p.id} 
+                onClick={() => { setSelectedId(p.id); setAddingProvider(false); }}
+                className={`relative w-full text-left px-3 py-3 border-l-2 transition-all cursor-pointer ${isActive ? 'bg-indigo-50/80 border-indigo-500' : 'border-transparent hover:bg-slate-50 hover:border-slate-200'}`}>
+                <div className="flex items-center gap-1.5 mb-1.5 pr-6">
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${p.enabled ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                   <span className={`text-sm font-bold truncate flex-1 ${isActive ? 'text-indigo-800' : p.enabled ? 'text-slate-800' : 'text-slate-400'}`}>{p.label}</span>
                   <span className="text-[9px] text-slate-300 font-medium shrink-0">{p.type === 'anthropic' ? 'ANT' : 'OAI'}</span>
@@ -267,7 +268,16 @@ const ProvidersTab: React.FC<ProvidersTabProps> = ({
                 ) : (
                   <p className="text-[11px] text-slate-300 pl-3">{p.enabled ? '暂无端点' : '已停用'}</p>
                 )}
-              </button>
+                {!p.isDefault && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onRemoveProvider(p.id); if (selectedId === p.id) setSelectedId(null); }}
+                    className="absolute top-3 right-2 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 hover:opacity-100 group-hover:opacity-100 transition-all"
+                    title="删除供应商"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>
@@ -291,7 +301,6 @@ const ProvidersTab: React.FC<ProvidersTabProps> = ({
               key={selected.id} provider={selected}
               onToggle={() => onToggleProvider(selected.id)}
               onUpdateField={u => onUpdateProvider(selected.id, u)}
-              onRemove={() => { onRemoveProvider(selected.id); setSelectedId(providers.find(p => p.id !== selected.id)?.id ?? null); }}
               onToggleModel={mid => onToggleModel(selected.id, mid)}
               onAddModel={mdl => onAddModel(selected.id, mdl)}
               onUpdateModel={(mid, u) => onUpdateModel(selected.id, mid, u)}
@@ -377,19 +386,17 @@ const ProviderDetail: React.FC<{
   provider: UnifiedProvider;
   onToggle: () => void;
   onUpdateField: (u: Partial<UnifiedProvider>) => void;
-  onRemove: () => void;
   onToggleModel: (mid: string) => void;
   onAddModel: (mdl: UnifiedModel) => void;
   onUpdateModel: (mid: string, u: Partial<UnifiedModel>) => void;
   onRemoveModel: (mid: string) => void;
   onDuplicateModel: (mid: string) => void;
-}> = ({ provider, onToggle, onUpdateField, onRemove, onToggleModel, onAddModel, onUpdateModel, onRemoveModel, onDuplicateModel }) => {
+}> = ({ provider, onToggle, onUpdateField, onToggleModel, onAddModel, onUpdateModel, onRemoveModel, onDuplicateModel }) => {
   const [showKey, setShowKey] = useState(false);
   const [addingModel, setAddingModel] = useState(false);
   const [newId, setNewId] = useState('');
   const [newLabel, setNewLabel] = useState('');
   const [newCap, setNewCap] = useState<ModelCapability>('llm');
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [expandedModelId, setExpandedModelId] = useState<string | null>(null);
 
   const submitModel = () => {
@@ -423,10 +430,6 @@ const ProviderDetail: React.FC<{
           className="flex-1 text-base font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-indigo-400 focus:outline-none px-1 py-0.5 transition-all min-w-0 rounded"
           placeholder="供应商名称"
         />
-        <button onClick={() => setDeleteConfirm(true)} disabled={provider.isDefault}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all disabled:opacity-20 disabled:cursor-not-allowed shrink-0">
-          <Trash2 size={12} />删除
-        </button>
       </div>
 
       {/* Credentials */}
@@ -516,19 +519,7 @@ const ProviderDetail: React.FC<{
         )}
       </div>
 
-      {deleteConfirm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-200">
-            <div className="w-9 h-9 rounded-full bg-red-100 flex items-center justify-center text-red-500 mb-4"><Trash2 size={18} /></div>
-            <h3 className="text-base font-bold text-slate-900 mb-1.5">删除「{provider.label}」？</h3>
-            <p className="text-slate-500 text-sm mb-5">此操作不可还原，依赖此凭据的任务将失败。</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setDeleteConfirm(false)} className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">取消</button>
-              <button onClick={() => { onRemove(); setDeleteConfirm(false); }} className="px-4 py-2 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700">确认删除</button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };
