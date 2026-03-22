@@ -268,15 +268,13 @@ const ProvidersTab: React.FC<ProvidersTabProps> = ({
                 ) : (
                   <p className="text-[11px] text-slate-300 pl-3">{p.enabled ? '暂无端点' : '已停用'}</p>
                 )}
-                {!p.isDefault && (
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); onRemoveProvider(p.id); if (selectedId === p.id) setSelectedId(null); }}
-                    className="absolute top-3 right-2 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
-                    title="删除供应商"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onRemoveProvider(p.id); if (selectedId === p.id) setSelectedId(null); }}
+                  className="absolute top-3 right-2 p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all"
+                  title="删除供应商"
+                >
+                  <Trash2 size={12} />
+                </button>
               </div>
             );
           })}
