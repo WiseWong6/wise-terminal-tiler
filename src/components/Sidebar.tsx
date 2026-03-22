@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onUploadClick }) => {
           className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-all duration-150"
           title="展开侧栏"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight size={16} />
         </button>
         {mode === 'ocr' && (
           <button
@@ -101,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onUploadClick }) => {
             className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-all duration-150"
             title="收起侧栏"
           >
-            <ChevronLeft className="w-3.5 h-3.5" />
+            <ChevronLeft size={16} />
           </button>
         </div>
       </div>
