@@ -446,64 +446,82 @@ const ProviderDetail: React.FC<{
         </div>
       </div>
 
-      {/* Models — accordion */}
+      {/* Models — Table format */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center gap-1.5">
           <Database size={11} className="text-slate-400" />
-          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">模型列表</span>
+          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">模型资产</span>
           <span className="ml-auto text-[10px] text-slate-400">
             {provider.models.filter(m => m.enabled).length} 已启用 / {provider.models.length} 总计
           </span>
         </div>
-        <div className="p-4 space-y-4 bg-slate-50/50">
-          {provider.models.map(model => (
-            <ModelConfigCard
-              key={model.id}
-              model={model}
-              onToggle={() => onToggleModel(model.id)}
-              onUpdate={u => onUpdateModel(model.id, u)}
-              onRemove={() => onRemoveModel(model.id)}
-              readonly={provider.isDefault}
-            />
-          ))}
-
-          {/* Add model form */}
-          {addingModel ? (
-            <div className="p-3 bg-indigo-50/60 border-t border-indigo-100 space-y-3">
-              <div className="grid grid-cols-[1fr_120px_60px] gap-2">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1">Model ID</label>
-                  <input autoFocus type="text" value={newId} onChange={e => setNewId(e.target.value)} placeholder="如: deepseek-chat"
-                    className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-200 bg-white font-mono focus:ring-2 focus:ring-indigo-500/30" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1">显示名称</label>
-                  <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="DeepSeek Chat"
-                    className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/30" />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 mb-1">类型</label>
-                  <select value={newCap} onChange={e => setNewCap(e.target.value as ModelCapability)}
-                    className="w-full text-xs px-2 py-2 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/30">
-                    <option value="llm">LLM</option>
-                    <option value="ocr">OCR</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-2 justify-end">
-                <button onClick={() => { setAddingModel(false); setNewId(''); setNewLabel(''); }} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">取消</button>
-                <button onClick={submitModel} disabled={!newId.trim()} className="px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">添加模型</button>
-              </div>
-            </div>
-          ) : (
-            <div className="p-2">
-              <button onClick={() => setAddingModel(true)}
-                className="flex w-full items-center justify-center gap-1.5 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 border border-dashed border-slate-200 hover:border-indigo-300 rounded-lg transition-all">
-                <Plus size={12} />注册模型 ID
-              </button>
-            </div>
-          )}
+        <div className="overflow-x-auto min-w-full">
+          <table className="w-full text-left border-collapse min-w-[760px]">
+            <thead>
+              <tr className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                <th className="w-10 px-3 py-2.5 text-center">启用</th>
+                <th className="px-3 py-2.5">Model ID</th>
+                <th className="w-20 px-3 py-2.5">类型</th>
+                <th className="px-3 py-2.5 w-32">显示名称</th>
+                <th className="w-12 px-2 py-2.5 text-center" title="深度思考">思考</th>
+                <th className="w-12 px-2 py-2.5 text-center" title="视觉处理">视觉</th>
+                <th className="w-12 px-2 py-2.5 text-center" title="工具调用">工具</th>
+                <th className="w-24 px-3 py-2.5">最大输出</th>
+                <th className="w-24 px-3 py-2.5">上下文</th>
+                <th className="w-10 px-3 py-2.5 text-center">操作</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {provider.models.map((model) => (
+                <ModelTableRow
+                  key={model.id}
+                  model={model}
+                  onToggle={() => onToggleModel(model.id)}
+                  onUpdate={u => onUpdateModel(model.id, u)}
+                  onRemove={() => onRemoveModel(model.id)}
+                  readonly={provider.isDefault}
+                />
+              ))}
+            </tbody>
+          </table>
         </div>
+
+        {/* Add model form */}
+        {addingModel ? (
+          <div className="p-3 bg-indigo-50/60 border-t border-indigo-100 space-y-3">
+            <div className="grid grid-cols-[1fr_120px_60px] gap-2">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">Model ID</label>
+                <input autoFocus type="text" value={newId} onChange={e => setNewId(e.target.value)} placeholder="如: deepseek-chat"
+                  className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-200 bg-white font-mono focus:ring-2 focus:ring-indigo-500/30" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">显示名称</label>
+                <input type="text" value={newLabel} onChange={e => setNewLabel(e.target.value)} placeholder="DeepSeek Chat"
+                  className="w-full text-xs px-2.5 py-2 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/30" />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">类型</label>
+                <select value={newCap} onChange={e => setNewCap(e.target.value as ModelCapability)}
+                  className="w-full text-xs px-2 py-2 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-indigo-500/30">
+                  <option value="llm">LLM</option>
+                  <option value="ocr">OCR</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setAddingModel(false); setNewId(''); setNewLabel(''); }} className="px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100 rounded-lg">取消</button>
+              <button onClick={submitModel} disabled={!newId.trim()} className="px-4 py-1.5 text-xs font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50">添加模型</button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-2 border-t border-slate-100">
+            <button onClick={() => setAddingModel(true)}
+              className="flex w-full items-center justify-center gap-1.5 py-2 text-xs font-medium text-indigo-600 hover:bg-indigo-50 border border-dashed border-slate-200 hover:border-indigo-300 rounded-lg transition-all">
+              <Plus size={12} />注册模型 ID
+            </button>
+          </div>
+        )}
       </div>
 
       {deleteConfirm && (
@@ -523,8 +541,8 @@ const ProviderDetail: React.FC<{
   );
 };
 
-// ── ModelConfigCard (Flattened Form) ─────────────────────────────────────────
-const ModelConfigCard: React.FC<{
+// ── ModelTableRow (Spreadsheet Form) ─────────────────────────────────────────
+const ModelTableRow: React.FC<{
   model: UnifiedModel;
   onToggle: () => void;
   onUpdate: (u: Partial<UnifiedModel>) => void;
@@ -532,77 +550,102 @@ const ModelConfigCard: React.FC<{
   readonly: boolean;
 }> = ({ model, onToggle, onUpdate, onRemove, readonly }) => {
   return (
-    <div className={`bg-white rounded-xl border transition-all ${model.enabled ? 'border-indigo-100 shadow-sm' : 'border-slate-200 opacity-60'}`}>
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 bg-slate-50/50 rounded-t-xl">
+    <tr className={`transition-all hover:bg-slate-50/70 group ${model.enabled ? '' : 'opacity-60 bg-slate-50/30'}`}>
+      <td className="px-3 py-2.5 text-center">
         <input type="checkbox" checked={model.enabled} onChange={onToggle}
-          className="w-4 h-4 text-indigo-600 border-slate-300 rounded cursor-pointer shrink-0" />
-        
+          className="w-3.5 h-3.5 text-indigo-600 border-slate-300 rounded cursor-pointer" />
+      </td>
+      
+      <td className="px-3 py-2.5">
         <input
           type="text"
           value={model.id}
           onChange={e => !readonly && onUpdate({ id: e.target.value })}
           readOnly={readonly}
-          className={`text-sm font-mono text-slate-800 bg-transparent border-b border-transparent min-w-0 flex-1 focus:outline-none transition-all ${
+          className={`w-full text-xs font-mono text-slate-800 bg-transparent border-b border-transparent focus:outline-none transition-all ${
             readonly ? 'cursor-default' : 'hover:border-slate-200 focus:border-indigo-400 cursor-text'
           }`}
-          title="Model ID"
+          title={model.id}
         />
+      </td>
 
+      <td className="px-3 py-2.5">
+        <div className="relative">
+          <select 
+            value={model.capabilities} 
+            onChange={e => !readonly && onUpdate({ capabilities: e.target.value as ModelCapability })}
+            disabled={readonly}
+            className={`w-full text-[10px] font-bold uppercase pl-1.5 pr-4 py-0.5 rounded appearance-none border-transparent focus:outline-none focus:ring-1 focus:ring-indigo-500/30 transition-all ${
+              model.capabilities === 'llm' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+            } ${readonly ? 'cursor-default' : 'cursor-pointer hover:bg-slate-100 hover:text-slate-700 hover:border-slate-200 border'}`}
+          >
+            <option value="llm">LLM</option>
+            <option value="ocr">OCR</option>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-1 flex items-center">
+            <ChevronDown size={10} className={model.capabilities === 'llm' ? 'text-purple-400' : 'text-blue-400'} />
+          </div>
+        </div>
+      </td>
+
+      <td className="px-3 py-2.5">
         <input
           type="text"
           value={model.label}
           onChange={e => !readonly && onUpdate({ label: e.target.value })}
           readOnly={readonly}
-          className={`text-xs font-semibold text-slate-600 bg-transparent border-b border-transparent w-32 focus:outline-none transition-all ${
+          className={`w-full text-xs font-semibold text-slate-600 bg-transparent border-b border-transparent focus:outline-none transition-all ${
             readonly ? 'cursor-default' : 'hover:border-slate-200 focus:border-indigo-400 cursor-text'
           }`}
-          title="显示名称"
         />
+      </td>
 
-        <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${model.capabilities === 'llm' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'}`}>
-          {model.capabilities.toUpperCase()}
-        </span>
+      <td className="px-2 py-2.5 text-center">
+        <button onClick={() => !readonly && onUpdate({ thinking: !model.thinking })} disabled={readonly}
+          className={`p-1 rounded-md transition-colors ${model.thinking ? 'bg-orange-100 text-orange-600' : 'text-slate-300 hover:bg-slate-100 focus:outline-none'}`}>
+          <Brain size={12} />
+        </button>
+      </td>
 
+      <td className="px-2 py-2.5 text-center">
+        <button onClick={() => !readonly && onUpdate({ vision: !model.vision })} disabled={readonly}
+          className={`p-1 rounded-md transition-colors ${model.vision ? 'bg-sky-100 text-sky-600' : 'text-slate-300 hover:bg-slate-100 focus:outline-none'}`}>
+          <EyeIcon size={12} />
+        </button>
+      </td>
+
+      <td className="px-2 py-2.5 text-center">
+        <button onClick={() => !readonly && onUpdate({ tools: !model.tools })} disabled={readonly}
+          className={`p-1 rounded-md transition-colors ${model.tools ? 'bg-teal-100 text-teal-600' : 'text-slate-300 hover:bg-slate-100 focus:outline-none'}`}>
+          <Wrench size={12} />
+        </button>
+      </td>
+
+      <td className="px-3 py-2.5">
+        <input type="number" min={256} step={256} value={model.maxOutputTokens ?? 8192}
+          onChange={e => !readonly && onUpdate({ maxOutputTokens: parseInt(e.target.value) || 8192 })}
+          readOnly={readonly}
+          className="w-16 text-xs px-1.5 py-1 border border-slate-200 rounded bg-white focus:bg-white focus:ring-1 focus:ring-indigo-500/30 font-mono transition-all" />
+      </td>
+
+      <td className="px-3 py-2.5">
+        <div className="flex items-center gap-1">
+          <input type="number" min={4096} step={4096} value={((model.contextWindow ?? 128000) / 1000).toFixed(0)}
+            onChange={e => !readonly && onUpdate({ contextWindow: (parseInt(e.target.value) || 128) * 1000 })}
+            readOnly={readonly}
+            className="w-12 text-xs px-1.5 py-1 border border-slate-200 rounded bg-white focus:bg-white focus:ring-1 focus:ring-indigo-500/30 font-mono transition-all text-right" />
+          <span className="text-[10px] text-slate-400 font-bold">K</span>
+        </div>
+      </td>
+
+      <td className="px-3 py-2.5 text-center">
         {!readonly && (
-          <button onClick={onRemove} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all shrink-0">
-            <Trash2 size={14} />
+          <button onClick={onRemove} className="p-1 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all opacity-0 group-hover:opacity-100">
+            <Trash2 size={13} />
           </button>
         )}
-      </div>
-
-      {/* Flattened Config Form - Single Row */}
-      <div className="px-4 pb-4 pt-3 flex items-end gap-3">
-        <div className="flex gap-2 shrink-0">
-          <Toggle value={!!model.thinking} onChange={v => onUpdate({ thinking: v })}
-            label="深度思考" hint="Extended Thinking" icon={<Brain size={12} />} />
-          <Toggle value={!!model.tools} onChange={v => onUpdate({ tools: v })}
-            label="工具调用" hint="Function Calling" icon={<Wrench size={12} />} />
-          <Toggle value={!!model.vision} onChange={v => onUpdate({ vision: v })}
-            label="视觉处理" hint="Vision Input" icon={<EyeIcon size={12} />} />
-        </div>
-
-        <div className="flex-1 ml-2">
-          <div className="flex justify-between items-end mb-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">最大输出 Tokens</label>
-            <span className="text-[10px] font-mono text-indigo-500 font-bold leading-none">{(model.maxOutputTokens ?? 8192).toLocaleString()}</span>
-          </div>
-          <input type="number" min={256} max={128000} step={256} value={model.maxOutputTokens ?? 8192}
-            onChange={e => onUpdate({ maxOutputTokens: parseInt(e.target.value) || 8192 })}
-            className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
-        </div>
-        
-        <div className="flex-1">
-          <div className="flex justify-between items-end mb-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">上下文</label>
-            <span className="text-[10px] font-mono text-indigo-500 font-bold leading-none">{((model.contextWindow ?? 128000) / 1000).toFixed(0)}K</span>
-          </div>
-          <input type="number" min={4096} max={2000000} step={4096} value={model.contextWindow ?? 128000}
-            onChange={e => onUpdate({ contextWindow: parseInt(e.target.value) || 128000 })}
-            className="w-full text-xs px-2.5 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500/30 font-mono transition-all" />
-        </div>
-      </div>
-    </div>
+      </td>
+    </tr>
   );
 };
 
