@@ -73,7 +73,7 @@ const ModelConfigPanel: React.FC<Props> = ({
   const [editingVar, setEditingVar] = React.useState<string | null>(null);
   const [editValue, setEditValue] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
-  const [expandedSection, setExpandedSection] = React.useState<string | null>('models');
+  const [expandedSections, setExpandedSections] = React.useState<Set<string>>(new Set(['models', 'params']));
 
   const handleStartEdit = (varName: string) => {
     setEditingVar(varName);
@@ -142,30 +142,41 @@ const ModelConfigPanel: React.FC<Props> = ({
     input.click();
   };
 
-  const SectionHeader = ({ icon, title, count, sectionId }: { icon: React.ReactNode; title: string; count?: number; sectionId: string }) => (
-    <button
-      onClick={() => setExpandedSection(expandedSection === sectionId ? null : sectionId)}
-      className="w-full flex items-center justify-between py-2 group"
-    >
-      <div className="flex items-center gap-2">
-        <span className="text-slate-400">{icon}</span>
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</span>
-        {count !== undefined && count > 0 && (
-          <span className="text-[10px] text-white bg-indigo-500 px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
-            {count}
-          </span>
-        )}
-      </div>
-      <svg
-        className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${expandedSection === sectionId ? 'rotate-180' : ''}`}
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
+  const SectionHeader = ({ icon, title, count, sectionId }: { icon: React.ReactNode; title: string; count?: number; sectionId: string }) => {
+    const isExpanded = expandedSections.has(sectionId);
+    return (
+      <button
+        onClick={() => {
+          const next = new Set(expandedSections);
+          if (next.has(sectionId)) {
+            next.delete(sectionId);
+          } else {
+            next.add(sectionId);
+          }
+          setExpandedSections(next);
+        }}
+        className="w-full flex items-center justify-between py-2 group"
       >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-  );
+        <div className="flex items-center gap-2">
+          <span className="text-slate-400">{icon}</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</span>
+          {count !== undefined && count > 0 && (
+            <span className="text-[10px] text-white bg-indigo-500 px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+              {count}
+            </span>
+          )}
+        </div>
+        <svg
+          className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+    );
+  };
 
   return (
     <div className="w-[30%] flex-none border-r border-slate-200 flex flex-col bg-white overflow-hidden">
@@ -192,7 +203,7 @@ const ModelConfigPanel: React.FC<Props> = ({
             />
           </div>
           
-          {expandedSection === 'models' && (
+          {expandedSections.has('models') && (
             <div className="px-3 pb-3 flex flex-col gap-1.5 max-h-[200px] overflow-y-auto">
               {textModels.length === 0 ? (
                 <div className="p-3 rounded-lg bg-slate-100 text-center">
@@ -258,7 +269,7 @@ const ModelConfigPanel: React.FC<Props> = ({
               />
             </div>
             
-            {expandedSection === 'vars' && (
+            {expandedSections.has('vars') && (
               <div className="px-3 pb-3 flex flex-col gap-2">
                 {extractedVars.map(v => {
                   const meta = variableMeta[v] ?? { type: 'text' as VariableType };
@@ -364,7 +375,7 @@ const ModelConfigPanel: React.FC<Props> = ({
             />
           </div>
           
-          {expandedSection === 'params' && (
+          {expandedSections.has('params') && (
             <div className="px-3 pb-3 flex flex-col gap-3">
               {/* Thinking Mode */}
               <div className="flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-200">
