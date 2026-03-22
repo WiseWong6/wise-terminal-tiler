@@ -456,13 +456,13 @@ const ProviderDetail: React.FC<{
           </span>
         </div>
         <div className="overflow-x-auto min-w-full">
-          <table className="w-full text-left border-collapse min-w-[760px]">
+          <table className="w-full text-left table-fixed min-w-[900px]">
             <thead>
               <tr className="bg-slate-50/50 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
                 <th className="w-10 px-3 py-2.5 text-center">启用</th>
-                <th className="px-3 py-2.5">Model ID</th>
-                <th className="w-20 px-3 py-2.5">类型</th>
-                <th className="px-3 py-2.5 w-32">显示名称</th>
+                <th className="w-56 px-3 py-2.5">Model ID</th>
+                <th className="w-24 px-3 py-2.5">类型</th>
+                <th className="w-40 px-3 py-2.5">显示名称</th>
                 <th className="w-12 px-2 py-2.5 text-center" title="深度思考">思考</th>
                 <th className="w-12 px-2 py-2.5 text-center" title="视觉处理">视觉</th>
                 <th className="w-12 px-2 py-2.5 text-center" title="工具调用">工具</th>
