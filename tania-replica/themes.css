@@ -1,0 +1,80 @@
+/* ===== 配色方案 themes.css =====
+ * 在 styles.css 之后加载，通过 :root.theme-xxx 覆盖底层 beige/gray/theme 变量
+ */
+
+/* ---------- Scheme K: Hermès 经典暖调 ----------
+ * 米白纸张 + 墨色文字 + 爱马仕橙
+ */
+:root.theme-hermes {
+  --beige-0:#f2efe9; --beige-1:#eae6de; --beige-2:#e2ddd3;
+  --beige-25:#d9d4ca; --beige-3:#b8b2a6; --beige-4:#9a9386;
+  --gray-0:#f7f7f7; --gray-1:#eeeeee; --gray-2:#e4e4e4;
+  --gray-3:#d4d4d4; --gray-4:#c8c8c8; --gray-5:#888888;
+  --gray-6:#555555; --gray-7:#333333; --gray-8:#1a1a1a;
+  --gray-9:#111111; --gray-10:#0d0d0d; --gray-11:#0a0a0a; --gray-12:#050505;
+  --theme-pink:#d95e00; --theme-blue:#d95e00; --theme-green:#006b3f;
+  --theme-lavender:#8b4513; --theme-yellow:#b8860b;
+  --yellow:#f59e0b;
+}
+@media (prefers-color-scheme:dark) {
+  :root.theme-hermes:not(.is-light) {
+    --theme-pink:#ff7b2e; --theme-blue:#ff7b2e; --theme-green:#34d399;
+    --theme-lavender:#cd853f; --theme-yellow:#fbbf24;
+  }
+}
+:root.theme-hermes.is-dark {
+  --theme-pink:#ff7b2e; --theme-blue:#ff7b2e; --theme-green:#34d399;
+  --theme-lavender:#cd853f; --theme-yellow:#fbbf24;
+}
+
+/* ---------- Scheme L: Klein Classic 经典冷调 ----------
+ * 米白纸张 + 墨色文字 + 克莱因蓝
+ */
+:root.theme-klein {
+  --beige-0:#f2efe9; --beige-1:#eae6de; --beige-2:#e2ddd3;
+  --beige-25:#d9d4ca; --beige-3:#b8b2a6; --beige-4:#9a9386;
+  --gray-0:#f7f7f7; --gray-1:#eeeeee; --gray-2:#e4e4e4;
+  --gray-3:#d4d4d4; --gray-4:#c8c8c8; --gray-5:#888888;
+  --gray-6:#555555; --gray-7:#333333; --gray-8:#1a1a1a;
+  --gray-9:#111111; --gray-10:#0d0d0d; --gray-11:#0a0a0a; --gray-12:#050505;
+  --theme-pink:#002FA7; --theme-blue:#002FA7; --theme-green:#006b3f;
+  --theme-lavender:#5b21b6; --theme-yellow:#b8860b;
+  --yellow:#d4a017;
+}
+@media (prefers-color-scheme:dark) {
+  :root.theme-klein:not(.is-light) {
+    --theme-pink:#4d7fff; --theme-blue:#4d7fff; --theme-green:#34d399;
+    --theme-lavender:#a78bfa; --theme-yellow:#fbbf24;
+  }
+}
+:root.theme-klein.is-dark {
+  --theme-pink:#4d7fff; --theme-blue:#4d7fff; --theme-green:#34d399;
+  --theme-lavender:#a78bfa; --theme-yellow:#fbbf24;
+}
+
+/* ---------- Scheme M: Klein Art 极致艺术 ----------
+ * 纯白背景 + 克莱因蓝强调 + 金色高亮
+ * 亮模式：极简白底，克莱因蓝作为唯一色彩焦点
+ * 暗模式：深蓝黑底，亮蓝焦点
+ */
+:root.theme-klein-art {
+  --beige-0:#ffffff; --beige-1:#f8f8f8; --beige-2:#f0f0f0;
+  --beige-25:#e5e5e5; --beige-3:#d4d4d4; --beige-4:#a3a3a3;
+  --gray-0:#fafafa; --gray-1:#f5f5f5; --gray-2:#e5e5e5;
+  --gray-3:#d4d4d4; --gray-4:#a3a3a3; --gray-5:#737373;
+  --gray-6:#525252; --gray-7:#404040; --gray-8:#1a1a1a;
+  --gray-9:#0a0e1a; --gray-10:#080c16; --gray-11:#060a12; --gray-12:#000000;
+  --theme-pink:#002FA7; --theme-blue:#002FA7; --theme-green:#006b3f;
+  --theme-lavender:#5b21b6; --theme-yellow:#b8860b;
+  --yellow:#FFD700;
+}
+@media (prefers-color-scheme:dark) {
+  :root.theme-klein-art:not(.is-light) {
+    --theme-pink:#4d7fff; --theme-blue:#4d7fff; --theme-green:#34d399;
+    --theme-lavender:#a78bfa; --theme-yellow:#fbbf24;
+  }
+}
+:root.theme-klein-art.is-dark {
+  --theme-pink:#4d7fff; --theme-blue:#4d7fff; --theme-green:#34d399;
+  --theme-lavender:#a78bfa; --theme-yellow:#fbbf24;
+}

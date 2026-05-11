@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-hermes">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="AI 产品负责人，开源工作流工具作者"/>
+  <title>Wise — AI 产品负责人</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="themes.css">
+  <style>
+    .navbar-logo svg, svg.navbar-logo, .navbar-logo {
+      height: 22px; min-height: 22px; min-width: 22px; width: 22px;
+      display: inline-block; vertical-align: middle;
+    }
+    .sidebar-section svg, .sidebar-section .sidebar-links svg, .sidebar-section .sidebar-nav-links svg {
+      height: 16px; width: 16px; flex-shrink: 0; display: inline-block;
+    }
+    .navbar-menu svg, .navbar-menu.nav-items svg {
+      height: 16px; width: 16px; display: inline-block;
+    }
+    .button svg, a.button svg {
+      height: 20px; min-height: 20px; min-width: 20px; width: 20px;
+      flex-shrink: 0; display: inline-block; margin-right: 0.25rem;
+    }
+    .heading-icon svg {
+      height: 24px; width: 24px; display: inline-block;
+    }
+    .hero-image { border-radius: 50%; max-width: 100%; }
+    .sidebar-nav-links a { align-items: center; display: flex; gap: 0.5rem; }
+    /* Wise custom */
+    .tag { display:inline-flex; align-items:center; gap:0.25rem; padding:0.35rem 0.7rem; border-radius:9999px; border:1px solid var(--color-border); background:var(--color-background-card); font-size:0.85rem; color:var(--color-text-muted); }
+    .tag-list { display:flex; flex-wrap:wrap; gap:0.5rem; margin:1rem 0; }
+    .page-article h1 { font-size: var(--h1); margin-bottom: 1rem; }
+    .page-article h2 { font-size: var(--h2); margin-top: 2rem; margin-bottom: 1rem; }
+    .page-article h3 { font-size: var(--h3); margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .page-article p, .page-article ul, .page-article ol { margin-bottom: 1rem; }
+    .page-article ul, .page-article ol { padding-left: 1.5rem; }
+    .page-article li { margin-bottom: 0.5rem; }
+    .timeline { display:flex; flex-direction:column; gap:0; }
+    .timeline-item { display:flex; gap:1rem; padding-bottom:1.5rem; align-items: baseline; }
+    .timeline-item:last-child { padding-bottom:0; }
+    .timeline-year { min-width:3.5rem; text-align:right; font-size:0.9rem; font-weight:700; color:var(--color-text-muted); line-height: 1.3; }
+    .timeline-line { display:flex; flex-direction:column; align-items:center; align-self: stretch; padding-top: 0.35rem; }
+    .timeline-dot { width:12px; height:12px; border-radius:50%; background:var(--color-primary); }
+    .timeline-track { width:2px; flex:1; background:var(--color-border); margin-top:4px; }
+    .timeline-content { flex:1; }
+    .timeline-content h4 { font-weight:700; margin-bottom:0.25rem; }
+    .qr-card { display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1.5rem; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); }
+    .qr-card img { width:8rem; height:8rem; border-radius:var(--border-radius); object-fit:cover; }
+    .filter-bar { display:flex; flex-wrap:wrap; gap:0.5rem; margin:1rem 0 1.5rem; }
+    .filter-btn { padding:0.4rem 0.9rem; border-radius:var(--border-radius); border:1px solid var(--color-border); background:var(--color-background-card); font-size:0.9rem; cursor:pointer; transition:all 0.15s; color:var(--color-text); }
+    .filter-btn:hover { border-color:var(--color-primary); }
+    .filter-btn.active { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+    .knowledge-card, .skill-card { display:block; padding:1.25rem; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); transition:all 0.15s; text-decoration:none; color:inherit; }
+    .knowledge-card:hover, .skill-card:hover { border-color:var(--color-primary); transform:translateY(-2px); }
+    .install-box { background:var(--gray-9); color:var(--gray-1); padding:1rem; border-radius:var(--border-radius); display:flex; align-items:center; gap:0.75rem; }
+    .install-box code { flex:1; font-family:var(--font-family-monospace); font-size:0.85rem; word-break:break-all; }
+    .copy-btn { padding:0.4rem; border-radius:var(--border-radius); background:transparent; border:none; color:var(--gray-4); cursor:pointer; }
+    .copy-btn:hover { background:var(--gray-7); color:var(--gray-0); }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; margin:1.5rem 0; }
+    .feature-card { padding:1.25rem; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); }
+    .feature-icon { width:2.5rem; height:2.5rem; border-radius:var(--border-radius); display:flex; align-items:center; justify-content:center; margin-bottom:0.75rem; font-size:1.2rem; }
+    .article-list { display:flex; flex-direction:column; gap:1.5rem; margin-top:1.5rem; }
+    .article-card { display:flex; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); overflow:hidden; text-decoration:none !important; color:inherit; transition:all 0.15s; }
+    .article-card:hover { border-color:var(--color-primary); transform:translateY(-2px); }
+    .article-cover { width:260px; flex-shrink:0; aspect-ratio:21/9; height:auto; align-self:center; }
+    .article-body { padding:1rem; flex:1; display:flex; flex-direction:column; justify-content:center; }
+    .article-body h3 { margin:0 0 0.5rem; font-size:1.1rem; color:var(--color-text); }
+    .article-body p { margin:0 0 0.75rem; font-size:0.9rem; color:var(--color-text-muted); line-height:1.5; }
+    .article-body time { font-size:0.8rem; color:var(--color-text-muted); }
+    @media screen and (max-width: 640px) {
+      .article-card { flex-direction:column; }
+      .article-cover { width:100%; aspect-ratio:21/9; }
+    }
+    .section-index .cards { grid-auto-rows: 1fr; }
+    .section-index .card { display: flex; flex-direction: column; height: 100%; }
+    .section-index .card .card-links { margin-top: auto; }
+    .section-index .card a, .section-index .card a:hover { text-decoration: none; }
+    .section-index .card p { flex: 1; }
+    #back-to-top {
+      position: fixed; right: 1.5rem; bottom: 1.5rem;
+      padding: 0.6rem; border-radius: var(--border-radius);
+      border: 1px solid var(--color-border);
+      background: var(--color-background-card);
+      color: var(--color-text);
+      cursor: pointer; z-index: 100;
+    }
+    .sidebar-collapse-btn {
+      display: none;
+      background: transparent;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: var(--border-radius);
+      align-items: center;
+      justify-content: center;
+    }
+    .sidebar-collapse-btn:hover {
+      background: var(--color-background-navbar-link-hover);
+      color: var(--color-text-emphasized);
+    }
+    @media screen and (min-width: 1020px) {
+      .sidebar-collapse-btn { display: flex; }
+      .layout {
+        transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .sidebar {
+        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .layout.sidebar-collapsed {
+        grid-template-columns: 52px 1fr;
+      }
+      .layout.sidebar-collapsed .sidebar {
+        width: 52px;
+        min-width: 52px;
+        overflow: hidden;
+      }
+      .layout.sidebar-collapsed .sidebar .site-name,
+      .layout.sidebar-collapsed .sidebar .sidebar-nav-links a span,
+      .layout.sidebar-collapsed .sidebar .sidebar-links a span,
+      .layout.sidebar-collapsed .sidebar-section h2,
+      .layout.sidebar-collapsed .sidebar .sidebar-links,
+      .layout.sidebar-collapsed .sidebar .navbar-button,
+      .layout.sidebar-collapsed .sidebar .dropdown,
+      .layout.sidebar-collapsed .sidebar .tooltip-container,
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link > a {
+        display: none;
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link {
+        justify-content: center;
+        padding: 0;
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link .flex-align-center {
+        flex-direction: column;
+      }
+      .layout.sidebar-collapsed .sidebar-collapse-btn svg {
+        transform: rotate(180deg);
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-nav-links a {
+        justify-content: center;
+        margin: 0;
+        padding: 0.5rem;
+        font-size: 0;
+      }
+      .layout.sidebar-collapsed .sidebar-section {
+        margin: 1.25rem 0;
+        padding-bottom: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="layout" class="layout">
+        <aside class="sidebar">
+      <section class="sidebar-section">
+        <div class="sidebar-title-link">
+          <a aria-current="page" class="flex-align-center gap" href="./">
+            <span style="font-size:22px;line-height:1;">💾</span>
+            <span class="site-name">Wise</span>
+          </a>
+          <div class="flex-align-center">
+            <div class="dropdown tooltip-container">
+              <button class="navbar-button" id="color-toggle"><div class="circle" style="background-color:var(--theme-blue)"></div></button>
+              <div class="tooltip">Ocean</div>
+            </div>
+            <div class="tooltip-container">
+              <button class="navbar-button" id="theme-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                  <path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                  <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                  <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
+                </svg>
+              </button>
+              <div class="tooltip">主题</div>
+            </div>
+            <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="收起侧边栏">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+            </button>
+
+          </div>
+        </div>
+      </section>
+      <section class="sidebar-section">
+        <nav class="sidebar-nav-links">
+          <a href="#projects">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Projects
+          </a>
+          <a href="#article">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Article
+          </a>
+          <a href="#prompt">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            Prompt
+          </a>
+          <a href="#skill">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Skill
+          </a>
+          <a href="#about">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            About
+          </a>
+        </nav>
+      </section>
+      <section class="sidebar-section">
+        <h2>Stay Connected</h2>
+        <nav class="sidebar-links">
+          <a href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+          <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer">小红书</a>
+        </nav>
+      </section>
+    </aside>
+        <header class="navbar">
+      <div class="navbar-title">
+        <div class="navbar-title-content">
+          <a aria-current="page" class="navbar-title-link" href="./">
+            <span style="font-size:16px;line-height:1;">💾</span>
+            <span class="site-name">Wise</span>
+          </a>
+        </div>
+      </div>
+      <div class="navbar-container">
+        <section class="navbar-section navbar-section-search">
+          <form>
+            <div class="search-container with-button">
+              <input id="search" type="search" class="searchbar" placeholder="搜索..." autoComplete="off" value=""/>
+              <button type="submit" class="transparent-button" disabled="">搜索</button>
+            </div>
+          </form>
+        </section>
+        <section class="navbar-section">
+          <button class="navbar-button" id="sidebar-toggle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+          <button class="navbar-button nav-menu-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12h18"></path><path d="M3 18h18"></path><path d="M3 6h18"></path>
+            </svg>
+          </button>
+          <nav class="navbar-menu nav-items">
+            <a href="#projects">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              Projects
+            </a>
+            <a href="#article">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Article
+            </a>
+            <a href="#prompt">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              Prompt
+            </a>
+            <a href="#skill">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              Skill
+            </a>
+            <a href="#about">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+              About
+            </a>
+          </nav>
+        </section>
+      </div>
+    </header>
+    <main class="main-content page">
+
+      <header class="hero hero-index">
+        <div class="hero-wrapper">
+          <div>
+            <h1>Hi，我是 @歪斯Wise</h1>
+            <p class="hero-description">前🐧厂，现上市港企 AI 产品负责人。</p>
+            <p class="hero-description">从业产品开始，就开始写作，不知不觉已经十年了，而AI时代也让Coding变得不再困难，这里是会承载自己开发的工具产品，创作的提示词和Skill，以及写作。希望能对你有帮助。</p>
+          </div>
+        </div>
+      </header>
+
+      <section class="section-index" id="projects">
+        <h2 class="heading">
+          <span class="heading-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></span>
+          Projects
+        </h2>
+        <p class="description">工具、原型和知识产品。来自同一条主线：把 AI 产品判断、内容生产、Agent 能力和个人工作流做成可复用系统。</p>
+        <div class="cards">
+          <div class="card">
+            <time>2026</time>
+            <a href="./mixed-preview/"><strong>混合格式渲染器 Mixed Preview</strong></a>
+            <p>不同语法不用再找不同的渲染器了，在同一个编辑器预览 Markdown、Mermaid、JSON、HTML。</p>
+            <div style="margin:0.5rem 0;">
+              <span class="tag" style="font-size:0.75rem;">web</span>
+            </div>
+            <div class="card-links">
+              <a class="button secondary small" href="./mixed-preview/">使用</a>
+              <a class="button secondary small" href="https://github.com/WiseWong6/wise-labs/blob/main/mixed-preview/README.md" target="_blank" rel="noreferrer">说明</a>
+              <a class="button secondary small" href="https://github.com/WiseWong6/wise-labs/tree/main/mixed-preview" target="_blank" rel="noreferrer">源码</a>
+            </div>
+          </div>
+          <div class="card">
+            <time>2026</time>
+            <a href="./terminal-tiler/"><strong>终端整理工具 Terminal Tiler</strong></a>
+            <p>拯救强迫症，支持一键整理 iTerm2、Terminal、Ghostty 终端窗口，支持指定屏幕比例放置，一边监工 AI，一边留给自己。</p>
+            <div style="margin:0.5rem 0;">
+              <span class="tag" style="font-size:0.75rem;">mac</span>
+            </div>
+            <div class="card-links">
+              <a class="button secondary small" href="./terminal-tiler/">使用</a>
+              <a class="button secondary small" href="https://mp.weixin.qq.com/s/B91RGP2olyIXzs6So3Ltkg" target="_blank" rel="noreferrer">说明</a>
+              <a class="button secondary small" href="https://github.com/WiseWong6/wise-labs/tree/main/terminal-tiler" target="_blank" rel="noreferrer">源码</a>
+            </div>
+          </div>
+          <div class="card">
+            <time>2026</time>
+            <strong>Swiss Editorial</strong>
+            <p>面向 AI 生成图文内容的 Swiss editorial 组件风格目录。</p>
+            <div style="margin:0.5rem 0;">
+              <span class="tag" style="font-size:0.75rem;">计划中</span>
+            </div>
+            <div class="card-links">
+              <span class="button secondary small" style="opacity:0.6;cursor:default;">暂未开放</span>
+            </div>
+          </div>
+          <div class="card">
+            <time>2025</time>
+            <a href="https://ima.qq.com/wiki/?shareId=e737631d30c5e6819db3099679f1c00822e60d6a9c5351967dc15eedb42eb679" target="_blank" rel="noreferrer"><strong>AI名人知识库</strong></a>
+            <p>收录 600+ 份马斯克、乔布斯、王兴等巨头的演讲、访谈的 ima 知识库，结合 DeepSeek 解答问题，站在巨人的肩膀上思考。</p>
+            <div style="margin:0.5rem 0;">
+              <span class="tag" style="font-size:0.75rem;">AI 知识库</span>
+            </div>
+            <div class="card-links">
+              <a class="button secondary small" href="https://ima.qq.com/wiki/?shareId=e737631d30c5e6819db3099679f1c00822e60d6a9c5351967dc15eedb42eb679" target="_blank" rel="noreferrer">使用</a>
+              <a class="button secondary small" href="https://mp.weixin.qq.com/s/SMDEpeEnO3edEeuOJLTv8g" target="_blank" rel="noreferrer">说明</a>
+              <a class="button secondary small" href="./knowledge/">源码</a>
+            </div>
+          </div>
+          <div class="card">
+            <time>2025</time>
+            <a href="./knowledge/"><strong>AI阅读系统</strong></a>
+            <p>输入链接，基于扣子工作流、飞书多维表格，对文章进行评分并输出知识卡片，帮助我们高效阅读，管理文章收藏夹。</p>
+            <div style="margin:0.5rem 0;">
+              <span class="tag" style="font-size:0.75rem;">多维表格</span>
+            </div>
+            <div class="card-links">
+              <a class="button secondary small" href="./knowledge/">使用</a>
+              <a class="button secondary small" href="https://mp.weixin.qq.com/s/j3QdUV_Q3_wT2I1QJap2Nw" target="_blank" rel="noreferrer">说明</a>
+              <a class="button secondary small" href="./knowledge/">源码</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-index" id="article">
+        <h2 class="heading">
+          <span class="heading-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg></span>
+          Article
+        </h2>
+        <p class="description">「歪斯的 AI 见闻」精选文章。从 AI 产品判断、模型测评、Prompt/Skills、AI Coding 到效率工具。</p>
+        <div class="article-list">
+          <a href="https://mp.weixin.qq.com/s/SMDEpeEnO3edEeuOJLTv8g" target="_blank" rel="noreferrer" class="article-card">
+            <div class="article-cover" style="background:linear-gradient(135deg, var(--color-primary) 0%, var(--theme-blue) 100%);opacity:0.2;"></div>
+            <div class="article-body">
+              <h3>用 ima + DeepSeek 搭建名人知识库</h3>
+              <p>收录 600+ 份马斯克、乔布斯、王兴等巨头的演讲、访谈的 ima 知识库，结合 DeepSeek 解答问题，站在巨人的肩膀上思考。</p>
+              <time>2025-03-12</time>
+            </div>
+          </a>
+          <a href="https://mp.weixin.qq.com/s/j3QdUV_Q3_wT2I1QJap2Nw" target="_blank" rel="noreferrer" class="article-card">
+            <div class="article-cover" style="background:linear-gradient(135deg, var(--theme-green) 0%, var(--color-primary) 100%);opacity:0.2;"></div>
+            <div class="article-body">
+              <h3>我的个人阅读系统：从输入到输出</h3>
+              <p>把阅读、摘录、标签和输出选题串成一套个人研究系统，解决读了很多书但留不下什么的痛点。</p>
+              <time>2025-02-28</time>
+            </div>
+          </a>
+          <a href="https://mp.weixin.qq.com/s/B91RGP2olyIXzs6So3Ltkg" target="_blank" rel="noreferrer" class="article-card">
+            <div class="article-cover" style="background:linear-gradient(135deg, var(--theme-yellow) 0%, var(--theme-pink) 100%);opacity:0.2;"></div>
+            <div class="article-body">
+              <h3>终端整理工具 Terminal Tiler</h3>
+              <p>拯救强迫症，支持一键整理 iTerm2、Terminal、Ghostty 终端窗口，支持指定屏幕比例放置。</p>
+              <time>2025-01-20</time>
+            </div>
+          </a>
+        </div>
+      </section>
+
+      <section class="section-index" id="prompt-skill">
+        <h2 class="heading">
+          <span class="heading-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg></span>
+          Skills
+        </h2>
+
+        <h3 id="prompt">Prompt</h3>
+        <p>从零创建和优化提示词的工具，支持框架选择、版本控制和持续迭代。</p>
+        <div class="cards" id="prompt-cards">
+<a href="./prompts/note-card/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">笔记卡片</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">将文本转化为高审美、杂志风格的 HTML5 信息海报</p>
+          </a>
+          <a href="./prompts/speed-read-landscape/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">横版</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">飞书多维表格画册适配的横版速读卡片</p>
+          </a>
+          <a href="./prompts/speed-read-portrait/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">无保存能力</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">竖版速读卡片，适用飞书多维表格，无保存能力</p>
+          </a>
+          <a href="./prompts/speed-read-portrait-pro/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">有保存能力</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">竖版速读卡片，支持移动端、PC端保存</p>
+          </a>
+          <a href="./prompts/ppt-swiss-editorial/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">瑞士主义高级质感+逻辑组件</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">瑞士主义高级质感 PPT，支持 Deck Skeleton + 打印适配</p>
+          </a>
+          <a href="./prompts/ppt-grid-svg/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">格子布局+SVG卡片</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">格子布局 + SVG 卡片风格 PPT，支持 16:9 和 PDF 下载</p>
+          </a>
+          <a href="./prompts/ppt-grid-paper/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">方格纸笔记</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">手绘笔记风格，将知识拆解为生动的「学霸笔记」</p>
+          </a>
+          <a href="./prompts/article-scoring/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">阅读评分</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">多维度文章评估与评分系统</p>
+          </a>
+          <a href="./prompts/personal-agent/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">个人智能体</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">Wise 的 AI 产品共创助手，支持知识库问答与 PRD 讲解</p>
+          </a>
+          <a href="./prompts/annual-report-card/index.html" class="skill-card" data-category="效率工具">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">年度报告卡片</h3>
+              <span class="tag" style="font-size:0.75rem;">效率工具</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">年度报告可视化卡片，Witness Soft 风格</p>
+          </a>
+          <a href="./prompts/gemini-christmas-tree/index.html" class="skill-card" data-category="AI编程">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">Gemini圣诞树</h3>
+              <span class="tag" style="font-size:0.75rem;">AI编程</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">3D 创意圣诞树，React 19 / R3F / WebGL 交互</p>
+          </a>
+          <a href="./prompts/ios-realism/index.html" class="skill-card" data-category="AI编程">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">iOS交互真实感增强</h3>
+              <span class="tag" style="font-size:0.75rem;">AI编程</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">iOS 17 风格设备拟真与交互增强</p>
+          </a>
+          <a href="./prompts/cat-id-photo/index.html" class="skill-card" data-category="AI绘画">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">猫咪证件照</h3>
+              <span class="tag" style="font-size:0.75rem;">AI绘画</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">证件照风格猫咪肖像摄影</p>
+          </a>
+          <a href="./prompts/couple-merch/index.html" class="skill-card" data-category="AI绘画">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">情侣周边</h3>
+              <span class="tag" style="font-size:0.75rem;">AI绘画</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">情侣 IP 周边设计，皮克斯风格卡通形象</p>
+          </a>
+          <a href="./prompts/food-city-coconut-chicken/index.html" class="skill-card" data-category="AI绘画">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">椰子鸡</h3>
+              <span class="tag" style="font-size:0.75rem;">AI绘画</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">等距立体 3D Q 版微缩渲染，猪肚鸡火锅 × 深圳滨海</p>
+          </a>
+          <a href="./prompts/food-city-pork-rice/index.html" class="skill-card" data-category="AI绘画">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">猪脚饭</h3>
+              <span class="tag" style="font-size:0.75rem;">AI绘画</span>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">等距立体 3D Q 版微缩渲染，隆江猪脚饭 × 深圳科技地标</p>
+          </a>
+        </div>
+
+        <h3 id="skill">Skill</h3>
+        <p>面向具体场景的 AI 能力封装，直接连接工作流与内容生产。</p>
+        <div class="cards">
+          <a href="https://github.com/WiseWong6/wise-skills/tree/main/prompt-creator" target="_blank" rel="noopener noreferrer" class="skill-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">prompt-creator</h3>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">分析用户需求，选择合适的提示词框架，从零创建高质量的 Prompt。</p>
+          </a>
+          <a href="https://github.com/WiseWong6/wise-skills/tree/main/prompt-optimizer" target="_blank" rel="noopener noreferrer" class="skill-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">prompt-optimizer</h3>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">严格变更控制下编辑、版本化并存储提示词。强制版本控制、作者签名。</p>
+          </a>
+          <a href="https://github.com/WiseWong6/wise-skills/tree/main/image-gen" target="_blank" rel="noopener noreferrer" class="skill-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">image-gen</h3>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">多提供商图片生成：火山 Ark (Doubao Seedream) 或 Gemini 3 Pro Image。支持批量、编辑、合成。</p>
+          </a>
+          <a href="https://github.com/WiseWong6/wise-skills/tree/main/ppt-speech-creator" target="_blank" rel="noopener noreferrer" class="skill-card">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+              <h3 style="margin:0;">ppt-speech-creator</h3>
+            </div>
+            <p style="margin:0.75rem 0 0;font-size:0.9rem;color:var(--color-text-muted);">创建 PPT 内容并生成配套演讲逐字稿。支持年终总结、项目复盘、产品发布等场景。</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="section-index" id="about">
+        <h2 class="heading">
+          <span class="heading-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg></span>
+          About
+        </h2>
+        <p>Hi，我是 Wise。之前在腾讯，现在是上市港企的 AI 产品负责人。</p>
+        <p>我的长期方向是把 AI 产品判断、知识系统、内容生产和开发工具做成可复用的工作流。每月持续测试最新 AI 产品，把筛选结果、产品判断和实战技巧写成内容，也把高频痛点做成工具。</p>
+        <p>从 Mixed Preview 的混合内容预览，到 Terminal Tiler 的多终端窗口整理，再到 Wise Skills 的 AI 能力封装——内容和项目都来自同一个目标：让 AI 真正进入日常工作。</p>
+
+<h3>我的时间线</h3>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-year">2026</div>
+            <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-track"></div></div>
+            <div class="timeline-content">
+              <h4>AI Harness工程：磐石</h4>
+              <p style="margin:0;color:var(--color-text-muted);font-size:0.9rem;">获得 今日保 保险中介科技模范奖</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2025</div>
+            <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-track"></div></div>
+            <div class="timeline-content">
+              <h4>加入手回集团</h4>
+              <p style="margin:0;color:var(--color-text-muted);font-size:0.9rem;">负责整体AI产品</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2023</div>
+            <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-track"></div></div>
+            <div class="timeline-content">
+              <h4>离开腾讯创业</h4>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2022</div>
+            <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-track"></div></div>
+            <div class="timeline-content">
+              <h4>获得腾讯技术工程最具影响力奖</h4>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2021</div>
+            <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-track"></div></div>
+            <div class="timeline-content">
+              <h4>加入天美工作室Z1 Studio</h4>
+              <p style="margin:0;color:var(--color-text-muted);font-size:0.9rem;">负责王者荣耀游戏直播、Zplan用户增长产品</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2019</div>
+            <div class="timeline-line"><div class="timeline-dot"></div><div class="timeline-track"></div></div>
+            <div class="timeline-content">
+              <h4>加入腾讯微保</h4>
+              <p style="margin:0;color:var(--color-text-muted);font-size:0.9rem;">负责用户经营策略产品</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-year">2016</div>
+            <div class="timeline-line"><div class="timeline-dot"></div></div>
+            <div class="timeline-content">
+              <h4>毕业于深圳大学</h4>
+            </div>
+          </div>
+        </div>
+
+        <h3>找到我</h3>
+        <p>全网同名：@歪斯Wise</p>
+        <p style="margin-bottom:0;">
+          <a class="button" href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a class="button" href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer" style="background:transparent;border:2px solid var(--color-border);color:var(--color-text);">X / Twitter</a>
+          <a class="button" href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer" style="background:transparent;border:2px solid var(--color-border);color:var(--color-text);">小红书</a>
+        </p>
+      </section>
+
+    <button id="back-to-top" style="background:var(--color-primary);color:#fff;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+    </button>
+    </main>
+    <footer>
+      <section class="footer-section">
+        <nav class="footer-menu">
+          <a href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+          <a href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer" class="footer-link">X / Twitter</a>
+          <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer" class="footer-link">小红书</a>
+        </nav>
+        <nav class="footer-menu-buttons">
+          <a href="https://github.com/WiseWong6/wise-labs" title="Wise Labs" target="_blank" rel="noopener noreferrer" class="button small">Wise Labs</a>
+          <a href="https://github.com/WiseWong6/wise-skills" title="Wise Skills" target="_blank" rel="noopener noreferrer" class="button small">Wise Skills</a>
+        </nav>
+      </section>
+    </footer>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const menuButton = document.querySelector('.nav-menu-button');
+      const navMenu = document.querySelector('.navbar-menu');
+      if (menuButton && navMenu) {
+        menuButton.addEventListener('click', function() { navMenu.classList.toggle('active'); });
+      }
+          // 主题切换
+    const themes = ['theme-hermes','theme-klein','theme-klein-art'];
+    const themeNames = { 'theme-hermes':'Hermès', 'theme-klein':'Klein', 'theme-klein-art':'Klein Art' };
+    const colorToggle = document.getElementById('color-toggle');
+    const colorTooltip = colorToggle?.closest('.tooltip-container')?.querySelector('.tooltip');
+    function applyTheme(name) {
+      const html = document.documentElement;
+      themes.forEach(t => html.classList.remove(t));
+      html.classList.add(name);
+      localStorage.setItem('theme-color', name);
+      if (colorTooltip) colorTooltip.textContent = themeNames[name];
+    }
+    if (colorToggle) {
+      colorToggle.addEventListener('click', function() {
+        const html = document.documentElement;
+        let idx = themes.findIndex(t => html.classList.contains(t));
+        if (idx === -1) idx = 0;
+        applyTheme(themes[(idx + 1) % themes.length]);
+      });
+    }
+    const savedTheme = localStorage.getItem('theme-color');
+    if (savedTheme && themes.includes(savedTheme)) {
+      applyTheme(savedTheme);
+    } else {
+      applyTheme('theme-hermes');
+    }
+
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+          const html = document.documentElement;
+          if (html.classList.contains('is-dark')) { html.classList.remove('is-dark'); html.classList.add('is-light'); localStorage.setItem('theme','light'); }
+          else if (html.classList.contains('is-light')) { html.classList.remove('is-light'); localStorage.removeItem('theme'); }
+          else { html.classList.add('is-dark'); localStorage.setItem('theme','dark'); }
+        });
+      }
+      function toggleSidebar() {
+        document.getElementById('layout').classList.toggle('sidebar-collapsed');
+      }
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+      const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
+      if (sidebarCollapseBtn) sidebarCollapseBtn.addEventListener('click', toggleSidebar);
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') document.documentElement.classList.add('is-dark');
+      else if (saved === 'light') document.documentElement.classList.add('is-light');
+
+      // 锚点平滑滚动
+      document.querySelectorAll('.sidebar-nav-links a[href^="#], .navbar-menu a[href^="#]').forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute('href').slice(1));
+          if (target) target.scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+
+      const backToTop = document.getElementById('back-to-top');
+      if (backToTop) {
+        function updateBackToTop() {
+          if (window.scrollY > 300) backToTop.classList.add('visible');
+          else backToTop.classList.remove('visible');
+        }
+        updateBackToTop();
+        window.addEventListener('scroll', updateBackToTop);
+        backToTop.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+    });
+  </script>
+</body>
+</html>

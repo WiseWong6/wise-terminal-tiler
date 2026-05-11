@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="theme-hermes">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="年度报告可视化卡片，Witness Soft 风格"/>
+  <title>年度报告卡片 — Prompt</title>
+  <link rel="stylesheet" href="../../styles.css">
+  <link rel="stylesheet" href="../../themes.css">
+  <style>
+    .navbar-logo svg, svg.navbar-logo, .navbar-logo {
+      height: 22px; min-height: 22px; min-width: 22px; width: 22px;
+      display: inline-block; vertical-align: middle;
+    }
+    .sidebar-section svg, .sidebar-section .sidebar-links svg, .sidebar-section .sidebar-nav-links svg {
+      height: 16px; width: 16px; flex-shrink: 0; display: inline-block;
+    }
+    .navbar-menu svg, .navbar-menu.nav-items svg {
+      height: 16px; width: 16px; display: inline-block;
+    }
+    .button svg, a.button svg {
+      height: 20px; min-height: 20px; min-width: 20px; width: 20px;
+      flex-shrink: 0; display: inline-block; margin-right: 0.25rem;
+    }
+    .heading-icon svg {
+      height: 24px; width: 24px; display: inline-block;
+    }
+    .hero-image { border-radius: 50%; max-width: 100%; }
+    .sidebar-nav-links a { align-items: center; display: flex; gap: 0.5rem; }
+    /* Wise custom */
+    .tag { display:inline-flex; align-items:center; gap:0.25rem; padding:0.35rem 0.7rem; border-radius:9999px; border:1px solid var(--color-border); background:var(--color-background-card); font-size:0.85rem; color:var(--color-text-muted); }
+    .tag-list { display:flex; flex-wrap:wrap; gap:0.5rem; margin:1rem 0; }
+    .page-article h1 { font-size: var(--h1); margin-bottom: 1rem; }
+    .page-article h2 { font-size: var(--h2); margin-top: 2rem; margin-bottom: 1rem; }
+    .page-article h3 { font-size: var(--h3); margin-top: 1.5rem; margin-bottom: 0.75rem; }
+    .page-article p, .page-article ul, .page-article ol { margin-bottom: 1rem; }
+    .page-article ul, .page-article ol { padding-left: 1.5rem; }
+    .page-article li { margin-bottom: 0.5rem; }
+    .timeline { display:flex; flex-direction:column; gap:0; }
+    .timeline-item { display:flex; gap:1rem; padding-bottom:1.5rem; align-items: baseline; }
+    .timeline-item:last-child { padding-bottom:0; }
+    .timeline-year { min-width:3.5rem; text-align:right; font-size:0.9rem; font-weight:700; color:var(--color-text-muted); line-height: 1.3; }
+    .timeline-line { display:flex; flex-direction:column; align-items:center; align-self: stretch; padding-top: 0.35rem; }
+    .timeline-dot { width:12px; height:12px; border-radius:50%; background:var(--color-primary); }
+    .timeline-track { width:2px; flex:1; background:var(--color-border); margin-top:4px; }
+    .timeline-content { flex:1; }
+    .timeline-content h4 { font-weight:700; margin-bottom:0.25rem; }
+    .qr-card { display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1.5rem; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); }
+    .qr-card img { width:8rem; height:8rem; border-radius:var(--border-radius); object-fit:cover; }
+    .filter-bar { display:flex; flex-wrap:wrap; gap:0.5rem; margin:1rem 0 1.5rem; }
+    .filter-btn { padding:0.4rem 0.9rem; border-radius:var(--border-radius); border:1px solid var(--color-border); background:var(--color-background-card); font-size:0.9rem; cursor:pointer; transition:all 0.15s; color:var(--color-text); }
+    .filter-btn:hover { border-color:var(--color-primary); }
+    .filter-btn.active { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+    .knowledge-card, .skill-card { display:block; padding:1.25rem; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); transition:all 0.15s; text-decoration:none !important; color:inherit; }
+    .knowledge-card:hover, .skill-card:hover { border-color:var(--color-primary); transform:translateY(-2px); }
+    .page-article .knowledge-card, .page-article .skill-card { text-decoration:none !important; }
+    .page-article .knowledge-card *, .page-article .skill-card * { text-decoration:none !important; }
+    .install-box { background:var(--gray-9); color:var(--gray-1); padding:1rem; border-radius:var(--border-radius); display:flex; align-items:center; gap:0.75rem; }
+    .install-box code { flex:1; font-family:var(--font-family-monospace); font-size:0.85rem; word-break:break-all; }
+    .copy-btn { padding:0.4rem; border-radius:var(--border-radius); background:transparent; border:none; color:var(--gray-4); cursor:pointer; }
+    .copy-btn:hover { background:var(--gray-7); color:var(--gray-0); }
+    .feature-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:1rem; margin:1.5rem 0; }
+    .feature-card { padding:1.25rem; border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); }
+    .feature-icon { width:2.5rem; height:2.5rem; border-radius:var(--border-radius); display:flex; align-items:center; justify-content:center; margin-bottom:0.75rem; font-size:1.2rem; }
+    .prompt-box { border:1px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); overflow:hidden; }
+    .prompt-header { display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1rem; background:var(--color-background-navbar); border-bottom:1px solid var(--color-border); font-size:0.85rem; font-weight:600; color:var(--color-text-muted); }
+    .prompt-header .copy-btn { display:flex; align-items:center; gap:0.35rem; padding:0.3rem 0.7rem; border-radius:var(--border-radius); background:transparent; border:1px solid var(--color-border); color:var(--color-text-muted); cursor:pointer; font-size:0.8rem; font-family:var(--font-family); transition:all 0.15s; }
+    .prompt-header .copy-btn:hover { background:var(--color-primary); color:#fff; border-color:var(--color-primary); }
+    .prompt-code { margin:0; padding:1rem; overflow-x:auto; max-height:60vh; overflow-y:auto; font-family:var(--font-family-monospace); font-size:0.85rem; line-height:1.6; color:var(--color-text); background:var(--color-background-card); }
+    .prompt-code code { white-space:pre-wrap; word-break:break-word; }
+    #sidebar-toggle { display: none; }
+    #back-to-top {
+      position: fixed; right: 1.5rem; bottom: 1.5rem;
+      padding: 0.6rem; border-radius: var(--border-radius);
+      border: 1px solid var(--color-border);
+      background: var(--color-background-card);
+      color: var(--color-text);
+      cursor: pointer; opacity: 0; visibility: hidden;
+      transition: all 0.2s; z-index: 100;
+    }
+    #back-to-top.visible { opacity: 1; visibility: visible; }
+    @media screen and (min-width: 800px) {
+      #sidebar-toggle { display: flex; border-color: var(--color-border); }
+      .sidebar-collapse-btn {
+        display: none;
+        background: transparent;
+        border: none;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        padding: 0.3rem;
+        border-radius: var(--border-radius);
+        align-items: center;
+        justify-content: center;
+      }
+      .sidebar-collapse-btn:hover {
+        background: var(--color-background-navbar-link-hover);
+        color: var(--color-text-emphasized);
+      }
+      .sidebar {
+        position: fixed !important;
+        left: 0; top: 0;
+        height: 100vh; z-index: 10;
+        display: block !important;
+      }
+      .layout {
+        grid-template-columns: 1fr !important;
+      }
+      .main-content,
+      .main-content.page {
+        margin-left: var(--sidebar-width) !important;
+      }
+      .layout.sidebar-collapsed .main-content,
+      .layout.sidebar-collapsed .main-content.page {
+        margin-left: 0 !important;
+      }
+      .layout {
+        transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .layout.sidebar-collapsed {
+        grid-template-columns: 52px 1fr !important;
+      }
+      .layout.sidebar-collapsed .main-content,
+      .layout.sidebar-collapsed .main-content.page {
+        margin-left: 0 !important;
+      }
+      .layout.sidebar-collapsed .sidebar {
+        width: 52px;
+        min-width: 52px;
+        transform: none;
+        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .layout.sidebar-collapsed .sidebar .site-name,
+      .layout.sidebar-collapsed .sidebar .sidebar-nav-links a span,
+      .layout.sidebar-collapsed .sidebar .sidebar-links a span,
+      .layout.sidebar-collapsed .sidebar-section h2,
+      .layout.sidebar-collapsed .sidebar .sidebar-links,
+      .layout.sidebar-collapsed .sidebar .navbar-button,
+      .layout.sidebar-collapsed .sidebar .dropdown,
+      .layout.sidebar-collapsed .sidebar .tooltip-container,
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link > a {
+        display: none;
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link {
+        justify-content: center;
+        padding: 0;
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link .flex-align-center {
+        flex-direction: column;
+      }
+      .layout.sidebar-collapsed .sidebar-collapse-btn svg {
+        transform: rotate(180deg);
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-nav-links a {
+        justify-content: center;
+        margin: 0;
+        padding: 0.5rem;
+        font-size: 0;
+      }
+      .layout.sidebar-collapsed .sidebar-section {
+        margin: 1.25rem 0;
+        padding-bottom: 1.5rem;
+      }
+  </style>
+</head>
+<body>
+  <div id="layout" class="layout">
+        <aside class="sidebar">
+      <section class="sidebar-section">
+        <div class="sidebar-title-link">
+          <a class="flex-align-center gap" href="../">
+            <span style="font-size:22px;line-height:1;">💾</span>
+            <span class="site-name">Wise</span>
+          </a>
+          <div class="flex-align-center">
+            <div class="dropdown tooltip-container">
+              <button class="navbar-button" id="color-toggle"><div class="circle" style="background-color:var(--theme-blue)"></div></button>
+              <div class="tooltip">Hermès</div>
+            </div>
+            <div class="tooltip-container">
+              <button class="navbar-button" id="theme-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                  <path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                  <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                  <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
+                </svg>
+              </button>
+              <div class="tooltip">主题</div>
+            </div>
+            <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="收起侧边栏">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+            </button>
+
+          </div>
+        </div>
+      </section>
+      <section class="sidebar-section">
+        <nav class="sidebar-nav-links">
+          <a href="../#projects">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Projects
+          </a>
+          <a href="../#article">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Article
+          </a>
+          <a href="../#prompt">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            Prompt
+          </a>
+          <a aria-current="page" href="./">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Skill
+          </a>
+          <a href="../#about">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            About
+          </a>
+        </nav>
+      </section>
+      <section class="sidebar-section">
+        <h2>Stay Connected</h2>
+        <nav class="sidebar-links">
+          <a href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+          <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer">小红书</a>
+        </nav>
+      </section>
+    </aside>
+        <header class="navbar">
+      <div class="navbar-title">
+        <div class="navbar-title-content">
+          <a class="navbar-title-link" href="../">
+            <span style="font-size:16px;line-height:1;">💾</span>
+            <span class="site-name">Wise</span>
+          </a>
+        </div>
+      </div>
+      <div class="navbar-container">
+        <section class="navbar-section navbar-section-search">
+          <form>
+            <div class="search-container with-button">
+              <input id="search" type="search" class="searchbar" placeholder="搜索..." autoComplete="off" value=""/>
+              <button type="submit" class="transparent-button" disabled="">搜索</button>
+            </div>
+          </form>
+        </section>
+        <section class="navbar-section">
+          <button class="navbar-button" id="sidebar-toggle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+          <button class="navbar-button nav-menu-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12h18"></path><path d="M3 18h18"></path><path d="M3 6h18"></path>
+            </svg>
+          </button>
+          <nav class="navbar-menu nav-items">
+            <a href="../#projects">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              Projects
+            </a>
+            <a href="../#article">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+              Article
+            </a>
+            <a href="../#prompt">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              Prompt
+            </a>
+            <a aria-current="page" href="./">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+              Skill
+            </a>
+            <a href="../#about">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+              About
+            </a>
+          </nav>
+        </section>
+      </div>
+    </header>
+    <main class="main-content page">
+<article class="page-article">
+        <h1>年度报告卡片</h1>
+        <div class="tag-list"><span class="tag">效率工具</span></div>
+        <p>年度报告可视化卡片，Witness Soft 风格</p>
+        <p><a class="button" href="https://mp.weixin.qq.com/s/GsKuf4chwtfWH_P18JPTlQ" target="_blank" rel="noopener noreferrer">📖 教程</a></p>
+        <h2>Prompt</h2>
+        <div class="prompt-box">
+          <div class="prompt-header">
+            <span>Prompt</span>
+            <button class="copy-btn" onclick="copyPrompt()" title="复制">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              <span class="copy-label">复制</span>
+            </button>
+          </div>
+          <pre class="prompt-code"><code id="prompt-content"> Author：@歪斯Wise
+// Model：GPT-5.2 / Gemini 3
+// Version：6.6.1 (K/L/M Only + Witness Soft + Narrative/Evidence Equal-Weight + Full Data Processing + NoiseOverlay Class + Print-Safe Reset)
+// Goal：杂志级“状态卡片”（不是报告）；每张卡=文案层+证据层（同权且必有）；可打印/可导出；不可编造；AI 易执行────────────────────────────────────────────────────────
+# 1) Role你是「深情的镜像见证者」兼「瑞士风格排版大师」。你拥有一双“在数据中看见灵魂”的眼睛。你的任务：把用户提供的【对话数据 / 指标数据 / 原始日志 / 纯文本】重构为 7–9 张（默认 9）杂志级 HTML5 状态卡片（不是报告，是版面）。────────────────────────────────────────────────────────
+# 2) Output（硬输出）- 只输出一个 HTML 文件（含全部 CSS/JS），放在一个 ```html 代码块中。- 代码块外不输出任何文字。────────────────────────────────────────────────────────
+# 3) Inputs（用户会粘贴其一）A) 结构化指标 JSONB) 原始对话/日志（timestamp、role、content、conv_id/chat_id/session_id 等）C) 纯文本（文章/复盘/宣言/对话整理）────────────────────────────────────────────────────────
+# 4) Core Philosophy（必须贯彻）4.1 拒绝报告味- 严禁使用：年度总结/年度关键词/活跃度分析/Top榜/数据分析/结论汇总 等 PPT 词汇。- 每张卡是独立杂志版面：无固定 Header/Footer；无固定“三段式模板”。4.2 Witness Soft（默认写作风格）- 基调：低声、留白、半拍停顿；不燃、不喊、不口号。- 常见节奏（可变体）：轻意象（可无）→ 过去/现在对照（2句内）→ 温柔与清醒并置 → 轻金句 → 收束。4.3 Gentle Soberness = Holding（抱持性）- 不评判、不打鸡血、不喊口号。- 对待成就：确认与见证（强调“你亲手建造/铺好/选择的东西”）。- 对待困境：理解与接纳（强调“风雨仍会来，但你知道根在哪里”）。- 所有肯定与理解必须落到证据与代价：不空泛。4.4 主语与姿态（硬规则）- 正文只用“你”作为主语；禁止出现“我/我们/AI/平台/产品名/模板化口号”。- 禁止说教：不得出现“你应该/你必须/你需要/你要学会”。4.5 意象克制（仅允许此组，且总量受限）- 允许：树/根/土壤/风雨/地面/脚印/裂缝/养分- 全套明显意象总计 ≤ 5 次；相邻两张不得重复同一意象；单张只用一条意象链。- 如证据不足支撑意象，就不用意象。────────────────────────────────────────────────────────
+# 5) Non-Negotiables（不可违背）5.1 不得编造- 不得编造任何缺失字段、数字或事实；缺失统一用“—”。5.2 每张卡必须同时包含两层（同权，缺一不可）- 文案层 Narrative：至少 1 句 Lead + 0–4 句 Supporting（可分行）。- 证据层 Evidence：至少 1 行可追溯证据（数字/时间/跨度/引用原句/字段值/明确片段）。  - 若无数字：用“引用原句/关键片段”作为证据（仍需可追溯）。  - 若连引用也无：证据写“—”；该卡主题必须承认空白/断层，不得脑补。5.3 MECE- 一张卡只讲 1 个核心点；全套 7–9 张必须互不重复（MECE）。- 宁可删掉判断，也不拼凑结论。5.4 句式去模板化- 同字段结构在不同数据下必须产出不同措辞/节奏/重点；禁止机械复用固定句式。────────────────────────────────────────────────────────
+# 6) Content Method（信息 → 版面）对 A/B/C 一律先拆“主题单元”，每个单元标注三层：- Core Sentence：最重要的一句话（洞察/转折/定义/见证）。- Support：2–5 条支撑点（原因/机制/动作/对照/片段）。- Evidence：数字/时间/跨度/引用原句/字段值（用于证据层）。容量策略：- 一页一核心：每张卡只推进 1 个新论点/新洞察/新证据点。- 不足则合并；超载才拆分：需要第 3 种信息形态才能塞下 → 必须拆卡。────────────────────────────────────────────────────────
+# 7) Visual Mode Engine（不是二选一；两层同权，只决定“视觉主导权”）每张卡都必须同时包含 Narrative + Evidence。Mode 只控制视觉主导权：Mode A Narrative-Led（默认）- 视觉主导：文案层；证据层仍需清晰可读、可追溯（禁止缩成“不可读注脚”）。Mode B Evidence-Led（限制使用）- 视觉主导：证据层（数字/时间/跨度/引用可做图腾或水印）。- 同时必须有 1 句 Narrative Lead 指挥阅读；禁止只剩大数字像报表。Mode C Balanced（少量）- 两层共同构图；主次通过字号/位置/留白实现，不靠堆块。比例建议（防同质）：- Narrative-Led ≥ 5 张- Evidence-Led ≤ 3 张- Balanced ≤ 2 张- 同一 Mode 不得连续超过 2 张────────────────────────────────────────────────────────
+# 8) Layout Library（每张选 1 个主布局；不得连续重复超过 2 张）L1 Type Lead（文字图腾）L2 Corner Note（留白沉底）L3 Big Evidence Watermark（证据水印；opacity 0.06–0.12）L4 Soft Split（柔性对比：旧/新、上/下半年；避免表格感）L5 Focus Layout（深色/消色卡专用：1 个证据点 + 1 句 Lead + 0–2 句补句）L6 Stat Stack（证据堆叠：仅证据强时；全套最多 1–2 张）可选辅件（最多 1 个，≤25%面积；无需则不用）- Mini scale / bar / ratio（HTML/CSS/SVG）- Timeline strip（小时间条）- Quote note（引用脚注区，但仍计入证据层）- VS micro（微对比角标）────────────────────────────────────────────────────────
+# 9) Pagination Logic（页面不写“封面/封底”等字样）总卡数 N：默认 9（可 7–9）Card 1（开场页）- 极简：Lead 1–2 句 + Evidence 1 行（可为“—”）- 禁止：报表感大组件/大矩阵/大流程Card 2 ~ N-1（内容页）- 每页 1 核心点（MECE）- 必须含 Narrative + Evidence 两层- 主布局 +（可选）1 个辅件（≤25%）Card N（收束页）- 只允许 1 句话收束；仍需 Evidence 1 行（可为“—”）- 60%+ 留白；不使用复杂组件（默认不生成页码/角落页码等装饰性编号；仅用于下载文件名的 01–09 编号。）────────────────────────────────────────────────────────
+# 10) Data Processing Rules（能算则算；不可得写“—”；Input B 强制，A/C 选用）Input B（原始日志）的统计口径：1) Session：同 conv_id/chat_id = 同会话；若无，则“间隔 &gt; 2 小时”切新会话（阈值采用后全程一致）2) User Turns：role=user 的消息条数3) 平均每会话轮次：user_turn_count / session_count（保留 1 位小数）4) Night 判定：00:00–05:00 的记录；最晚一条 user 时间戳（精确到秒，若不可得写“—”）5) 活跃时段：按小时直方图；取占比最高的连续窗口（如 22:00–01:00），输出窗口与占比%6) 节奏：按月统计会话/对话；峰值月/谷值月；高密度区间（&gt;P75）/低密度区间（&lt;P25）7) Obsession：问题/意图聚类最高频问题簇；复读机瞬间=最常见问法；跨度=首次→最后日期（天数）8) Emotion Weather：抽取情绪/状态词 top3；情绪高发窗口与占比%（不可得写“—”）9) Understand → Do：A类（是什么/为什么/解释）vs B类（怎么做/落地/实现）；上半年/下半年占比变化；转折点=首次出现“B 连续≥N次”的日期（N 来自统计；不可得写“—”）Anti-Hallucination：- 数据缺失则 Evidence=“—”或跳过该选题；不可编造。────────────────────────────────────────────────────────
+# 11) Content Archetypes（用于 MECE 选题；证据强度优先；不足则跳过）从中挑 7–9 个，不重复：A Soil（厚度/积累）B Root（执念/凝视：跨度最长/重复最多）C Wind（波动/峰谷/节奏差）D Night（夜间/独处：最晚时刻或夜间窗口）E Shift（位移：旧/新 或 上/下半年重心变化）F Cost（代价：空窗/断层/放弃与取舍；证据不足则 Evidence=— 并承认空白）G Order（秩序：方法、结构化、复用动作痕迹）H Bond（连接：关系/陪伴/对话姿态变化；证据来自原句引用）I Ground（地面：你亲手铺好的可重复路径；证据来自行动/时间/复现痕迹）────────────────────────────────────────────────────────
+# 12) Design System（视觉规范 - 必须）- 卡片固定：600×800；每张必须 class=&quot;swiss-card&quot;- 单列纵向排列；禁止 flex-wrap- .swiss-card 必须 flex-shrink:0；overflow:hidden；无圆角（border-radius:0；禁 rounded-*）- Body 背景：#e5e2dc（纸张浮在桌面上）Typography（Head 必须引入）&lt;link href=&quot;https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;family=Oswald:wght@400;600&amp;display=swap&quot; rel=&quot;stylesheet&quot;&gt;Texture（必须）- 必须实现 .noise-overlay（SVG/feTurbulence 噪点层）  - mix-blend-mode:multiply  - opacity 0.05–0.08- Screen shadow：统一阴影；Print 移除阴影- Icons：FontAwesome 可少量点缀（克制）语义类（可用或等价实现）- .dark（深色底）- .accent（强调色点缀）- .noise（噪点叠加）────────────────────────────────────────────────────────
+# 13) Color &amp; Rhythm（仅 3 套；整套只选 1 套；严禁混用强调色）选择 1 套作为整套主题：Option K（Hermès Warm）- Bg: #f2efe9  Text: #1a1a1a  Accent: #d95e00- 必须包含 1–2 张 Dark 卡：  - Dark：Bg #1a1a1a / Text #f2efe9 / Accent 仍为 #d95e00- Flow：亮 - 亮 - 暗 - 亮（暗卡尽量不相邻）- Dark 卡必须用 L5 Focus LayoutOption L（Klein Classic）- Bg: #f2efe9  Text: #1a1a1a  Accent: #002FA7- 必须包含 1–2 张 Dark 卡：  - Dark：Bg #1a1a1a / Text #f2efe9 / Accent 仍为 #002FA7- Flow：亮 - 亮 - 暗 - 亮（暗卡尽量不相邻）- Dark 卡必须用 L5 Focus LayoutOption M（Klein Art）- Bg: #002FA7  Text: #FFFFFF  Aux: #000000- 必须包含 1–2 张 消色卡（黑/白）作为呼吸：  - 消色卡：Bg #000000 或 #FFFFFF；文字反色；强调克制- Flow：蓝 - 蓝 - 黑/白 - 蓝（尽量不相邻）- 消色卡必须用 L5 Focus Layout────────────────────────────────────────────────────────
+# 14) Output &amp; Print（核心：防空白、防缩放、防错位）依赖（CDN 必须）- Tailwind: https://cdn.tailwindcss.com- FontAwesome: https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css- html2canvas: https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js（可选图表库：只选其一；若只需条形/刻度/占比，优先 HTML/CSS/SVG）- Chart.js: https://cdn.jsdelivr.net/npm/chart.js- ECharts: https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.jsScreen Layout- 卡片纵向单列；不要横向排版；不要 flex-wrap。Print / PDF（必须）- @page { size: 600px 800px; margin: 0; }  （若浏览器对 px 支持不稳定，可在注释中提供备用：6.25in 8.333in；但默认以 600×800 为准）- @media print 全局重置：  html, body { width: 600px; height: auto; margin: 0 !important; padding: 0 !important; background: none; display: block !important; overflow: visible; zoom: 1; }  打印态不得保留 body 的 flex/gap/grid（必须是 block 流）- 打印态卡片强制：  .swiss-card { width: 600px !important; height: 800px !important; margin: 0 !important; break-after: page; page-break-after: always; break-inside: avoid; box-shadow: none !important; border: none; overflow: hidden; }  print-color-adjust: exact; -webkit-print-color-adjust: exact;- .no-print { display:none !important; }Save Button（必须）- 右下角 fixed 按钮“保存全套卡片”（class no-print）- saveAll()：逐张 html2canvas 下载- 函数开头必须：await document.fonts.ready;文件命名- 01–09 + 可选短名（从 Lead 抽取 2–6 字；取不到则省略）────────────────────────────────────────────────────────
+# 15) Self-Check（生成前必须自检，不对外输出）- 是否出现“我/我们/AI/平台名/产品名/模板化口号”？→ 删除/改写为“你”- 是否出现“你应该/你必须/你需要/你要学会”？→ 改写- 是否每张卡同时有 Narrative + Evidence，且 Evidence 可追溯？→ 不足写“—”，不得脑补- 是否每张卡仅 1 核心点且全套 MECE？→ 重写- Mode 配比是否合理（A≥5，B≤3，C≤2，且不连续&gt;2）？→ 调整- K/L 是否 1–2 张 Dark；M 是否 1–2 张消色；尽量不相邻；且用 Focus Layout？→ 调整- 是否包含 @page + print reset + 卡片打印态 !important？→ 必须有- 最终输出是否为单个 ```html 代码块，且外部无文字？→ 必须满足────────────────────────────────────────────────────────
+# Input Content[在此处粘贴你的数据 JSON / 原始日志 / 文本内容]</code></pre>
+        </div>
+</article>
+    </main>
+    <footer>
+      <section class="footer-section">
+        <nav class="footer-menu">
+          <a href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+          <a href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer" class="footer-link">X / Twitter</a>
+          <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer" class="footer-link">小红书</a>
+        </nav>
+        <nav class="footer-menu-buttons">
+          <a href="https://github.com/WiseWong6/wise-labs" title="Wise Labs" target="_blank" rel="noopener noreferrer" class="button small">Wise Labs</a>
+          <a href="https://github.com/WiseWong6/wise-skills" title="Wise Skills" target="_blank" rel="noopener noreferrer" class="button small">Wise Skills</a>
+        </nav>
+      </section>
+    </footer>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const menuButton = document.querySelector('.nav-menu-button');
+      const navMenu = document.querySelector('.navbar-menu');
+      if (menuButton && navMenu) {
+        menuButton.addEventListener('click', function() { navMenu.classList.toggle('active'); });
+      }
+          // 主题切换
+    const themes = ['theme-hermes','theme-klein','theme-klein-art'];
+    const themeNames = { 'theme-hermes':'Hermès', 'theme-klein':'Klein', 'theme-klein-art':'Klein Art' };
+    const colorToggle = document.getElementById('color-toggle');
+    const colorTooltip = colorToggle?.closest('.tooltip-container')?.querySelector('.tooltip');
+    function applyTheme(name) {
+      const html = document.documentElement;
+      themes.forEach(t => html.classList.remove(t));
+      html.classList.add(name);
+      localStorage.setItem('theme-color', name);
+      if (colorTooltip) colorTooltip.textContent = themeNames[name];
+    }
+    if (colorToggle) {
+      colorToggle.addEventListener('click', function() {
+        const html = document.documentElement;
+        let idx = themes.findIndex(t => html.classList.contains(t));
+        if (idx === -1) idx = 0;
+        applyTheme(themes[(idx + 1) % themes.length]);
+      });
+    }
+    const savedTheme = localStorage.getItem('theme-color');
+    if (savedTheme && themes.includes(savedTheme)) {
+      applyTheme(savedTheme);
+    } else {
+      applyTheme('theme-hermes');
+    }
+
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+          const html = document.documentElement;
+          if (html.classList.contains('is-dark')) { html.classList.remove('is-dark'); html.classList.add('is-light'); localStorage.setItem('theme','light'); }
+          else if (html.classList.contains('is-light')) { html.classList.remove('is-light'); localStorage.removeItem('theme'); }
+          else { html.classList.add('is-dark'); localStorage.setItem('theme','dark'); }
+        });
+      }
+      function toggleSidebar() {
+        document.getElementById('layout').classList.toggle('sidebar-collapsed');
+      }
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+      const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
+      if (sidebarCollapseBtn) sidebarCollapseBtn.addEventListener('click', toggleSidebar);
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') document.documentElement.classList.add('is-dark');
+      else if (saved === 'light') document.documentElement.classList.add('is-light');
+      function copyPrompt() {
+        const code = document.getElementById('prompt-content').innerText;
+        navigator.clipboard.writeText(code).then(() => {
+          const btn = document.querySelector('.prompt-header .copy-btn');
+          const orig = btn.innerHTML;
+          btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span class="copy-label">已复制</span>';
+          setTimeout(() => btn.innerHTML = orig, 2000);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
