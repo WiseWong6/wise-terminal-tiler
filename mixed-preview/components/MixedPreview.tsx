@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useLayoutEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import mermaid from 'mermaid';
-import { Download, Image as ImageIcon } from 'lucide-react';
+import { Download, Image as ImageIcon, Copy, Check, PanelLeftOpen, ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
+import ZoomableWrapper from './ZoomableWrapper';
 import JSON5 from 'json5';
 
 mermaid.initialize({
@@ -18,10 +19,71 @@ mermaid.initialize({
 interface MixedPreviewProps {
   code: string;
   onError: (error: string | null) => void;
+  isCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
+// Reusable zoom controls
+const ZoomControls: React.FC<{
+  scale: number;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onReset: () => void;
+  onFit?: () => void;
+}> = ({ scale, onZoomIn, onZoomOut, onReset, onFit }) => (
+  <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md px-2 py-1.5">
+    <button
+      onClick={onZoomIn}
+      disabled={scale >= 3}
+      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-black"
+      title="放大"
+    >
+      <ZoomIn size={14} />
+    </button>
+    <button
+      onClick={onZoomOut}
+      disabled={scale <= 0.5}
+      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-black"
+      title="缩小"
+    >
+      <ZoomOut size={14} />
+    </button>
+    <button
+      onClick={onReset}
+      className="p-1 rounded hover:bg-slate-100 transition-colors text-black"
+      title="重置"
+    >
+      <RotateCcw size={12} />
+    </button>
+    {onFit && (
+      <button
+        onClick={onFit}
+        className="p-1 rounded hover:bg-slate-100 transition-colors text-black"
+        title="适配"
+      >
+        <Maximize2 size={12} />
+      </button>
+    )}
+    <span className="text-xs text-black font-mono min-w-[36px] text-center">
+      {Math.round(scale * 100)}%
+    </span>
+  </div>
+);
+
+const useZoom = () => {
+  const [scale, setScale] = useState(1);
+  const clamp = (v: number) => Math.max(0.5, Math.min(3, v));
+  return {
+    scale,
+    zoomIn: () => setScale(s => clamp(s + 0.1)),
+    zoomOut: () => setScale(s => clamp(s - 0.1)),
+    reset: () => setScale(1),
+    setScale: (v: number) => setScale(clamp(v)),
+  };
+};
+
 // A component to render a single Mermaid diagram
-const MermaidDiagram: React.FC<{ code: string }> = ({ code }) => {
+const MermaidDiagram: React.FC<{ code: string; scale: number }> = ({ code, scale }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -146,35 +208,36 @@ const MermaidDiagram: React.FC<{ code: string }> = ({ code }) => {
   }
 
   return (
-    <div className="my-4 rounded shadow-sm border border-slate-200 overflow-hidden bg-white">
-      <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex justify-end space-x-2">
-        <button
-          onClick={handleDownloadSVG}
-          className="flex items-center space-x-1 px-2 py-1 bg-white hover:bg-slate-100 rounded text-xs text-slate-600 transition-colors border border-slate-200"
-          title="Download SVG"
-        >
-          <Download size={14} />
-          <span>SVG</span>
-        </button>
-        <button
-          onClick={handleDownloadPNG}
-          className="flex items-center space-x-1 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 rounded text-xs text-indigo-700 transition-colors border border-indigo-200"
-          title="Download PNG"
-        >
-          <ImageIcon size={14} />
-          <span>PNG</span>
-        </button>
+    <div className="my-4 rounded shadow-sm border border-slate-200 bg-white">
+      <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-end">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleDownloadSVG}
+            className="flex items-center space-x-1 px-2 py-1 bg-white hover:bg-slate-100 rounded text-xs text-slate-600 transition-colors border border-slate-200"
+            title="Download SVG"
+          >
+            <Download size={14} />
+            <span>SVG</span>
+          </button>
+          <button
+            onClick={handleDownloadPNG}
+            className="flex items-center space-x-1 px-2 py-1 bg-indigo-50 hover:bg-indigo-100 rounded text-xs text-indigo-700 transition-colors border border-indigo-200"
+            title="Download PNG"
+          >
+            <ImageIcon size={14} />
+            <span>PNG</span>
+          </button>
+        </div>
       </div>
-      <div
-        className="mermaid-container flex justify-center p-4 overflow-auto"
-        dangerouslySetInnerHTML={{ __html: svgContent }}
-      />
+      <ZoomableWrapper scale={scale} className="mermaid-container flex justify-center p-4">
+        <div dangerouslySetInnerHTML={{ __html: svgContent }} />
+      </ZoomableWrapper>
     </div>
   );
 };
 
 // A component to render JSON
-const JsonViewer: React.FC<{ code: string }> = ({ code }) => {
+const JsonViewer: React.FC<{ code: string; scale: number }> = ({ code, scale }) => {
   let parsed: any;
   let formatted = code;
   let error = null;
@@ -203,34 +266,47 @@ const JsonViewer: React.FC<{ code: string }> = ({ code }) => {
   }
 
   return (
-    <div className="my-4 rounded overflow-hidden border border-slate-200 shadow-sm">
-      <div className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex justify-between items-center">
+    <div className="my-4 rounded border border-slate-200 shadow-sm">
+      <div className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex items-center">
         <span>JSON</span>
       </div>
-      <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none">
-        {formatted}
-      </SyntaxHighlighter>
+      <ZoomableWrapper scale={scale} className="!m-0 !rounded-none">
+        <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none">
+          {formatted}
+        </SyntaxHighlighter>
+      </ZoomableWrapper>
     </div>
   );
 };
 
 // A component to render HTML in an iframe
-const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
+const HtmlPreview: React.FC<{ code: string; scale: number }> = ({ code, scale }) => {
   return (
-    <div className="my-4 rounded overflow-hidden border border-slate-200 shadow-sm bg-white h-[800px] flex flex-col">
-      <div className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex justify-between items-center shrink-0">
+    <div className="my-4 rounded border border-slate-200 shadow-sm bg-white h-[800px] flex flex-col">
+      <div className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex items-center shrink-0">
         <span>HTML Preview</span>
       </div>
-      <iframe
-        srcDoc={code}
-        className="w-full flex-1 border-none bg-white"
-        sandbox="allow-scripts allow-same-origin"
-      />
+      <ZoomableWrapper scale={scale} className="w-full flex-1">
+        <iframe
+          srcDoc={code}
+          className="w-full border-none bg-white"
+          style={{ minHeight: '780px' }}
+          sandbox="allow-scripts allow-same-origin"
+        />
+      </ZoomableWrapper>
     </div>
   );
 };
 
-const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError }) => {
+
+const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed = false, onToggleSidebar }) => {
+  const { scale, zoomIn, zoomOut, reset, setScale } = useZoom();
+  const [copied, setCopied] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const savedScrollRatio = useRef(0);
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
   // Pre-process the code to auto-detect pure JSON or pure Mermaid if not wrapped
   const preprocessCode = (input: string) => {
     const trimmed = input.trim();
@@ -287,19 +363,95 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError }) => {
     onError(null);
   }, [processedCode, onError]);
 
+  // Restore scroll position after scale changes
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 0) return;
+    el.scrollTop = Math.min(savedScrollRatio.current * maxScroll, maxScroll);
+  }, [scale]);
+
+  // Persist scroll ratio on any scroll
+  useLayoutEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const maxScroll = el.scrollHeight - el.clientHeight;
+      if (maxScroll > 0) {
+        savedScrollRatio.current = el.scrollTop / maxScroll;
+      }
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const handleFit = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const content = previewRef.current;
+    if (!content) return;
+    const paddingX = 64; // p-8 = 2rem * 2 sides
+    const viewWidth = el.clientWidth - paddingX;
+    const contentWidth = content.scrollWidth;
+    if (contentWidth <= 0 || viewWidth <= 0) return;
+    const target = viewWidth / contentWidth;
+    savedScrollRatio.current = 0;
+    setScale(target);
+  }, [setScale]);
+
+  const handleCopy = async () => {
+    const text = previewRef.current?.innerText;
+    if (!text || !text.trim()) return;
+    try {
+      await navigator.clipboard.writeText(text.trim());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
       <div className="flex items-center justify-between px-4 bg-white border-b border-slate-200 z-10 shrink-0 shadow-sm" style={{ minHeight: '45px' }}>
-        <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
-          Preview
-        </span>
+        <div className="flex items-center space-x-3">
+          {isCollapsed && onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              title="展开编辑器"
+            >
+              <PanelLeftOpen size={14} />
+              <span>展开</span>
+            </button>
+          )}
+          <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
+            Preview
+          </span>
+          <ZoomControls scale={scale} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={reset} onFit={handleFit} />
+        </div>
+        <button
+          onClick={handleCopy}
+          disabled={!processedCode || copied}
+          className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+            copied
+              ? 'bg-green-50 text-green-700 border-green-200'
+              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+          }`}
+          title={copied ? '已复制' : '复制渲染后文本'}
+        >
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          <span>{copied ? '已复制' : '复制'}</span>
+        </button>
       </div>
-      <div className="flex-1 overflow-auto p-8">
-        <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-slate-200 prose prose-slate max-w-none prose-strong:font-bold prose-strong:text-slate-900">
+      <div ref={scrollContainerRef} className="relative overflow-auto" style={{ height: 'calc(100% - 45px)' }}>
+        <div className="w-full h-full p-8">
+          <div ref={previewRef} className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-slate-200 prose prose-slate max-w-none prose-strong:font-bold prose-strong:text-slate-900" style={{ minWidth: '760px' }}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             rehypePlugins={[rehypeRaw]}
-            components={{
+            components={useMemo(() => ({
               p: ({ ...props }: any) => <div className="mb-4 leading-relaxed" {...props} />,
               div: ({ ...props }: any) => {
                 // If it has a data-html attribute, it's our injected raw HTML
@@ -318,15 +470,15 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError }) => {
                 const isBlock = Boolean(match);
 
                 if (isBlock && language === 'mermaid') {
-                  return <MermaidDiagram code={content} />;
+                  return <MermaidDiagram code={content} scale={scaleRef.current} />;
                 }
 
                 if (isBlock && language === 'json') {
-                  return <JsonViewer code={content} />;
+                  return <JsonViewer code={content} scale={scaleRef.current} />;
                 }
 
                 if (isBlock && language === 'html-preview') {
-                  return <HtmlPreview code={content} />;
+                  return <HtmlPreview code={content} scale={scaleRef.current} />;
                 }
 
                 return isBlock ? (
@@ -348,7 +500,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError }) => {
                   </code>
                 );
               },
-            }}
+            }), [])}
           >
             {processedCode}
           </ReactMarkdown>
@@ -357,6 +509,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError }) => {
               Enter Markdown, HTML, JSON, or Mermaid syntax...
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
