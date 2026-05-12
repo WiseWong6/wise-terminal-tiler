@@ -610,12 +610,27 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
       switch (contentType) {
         case 'json': {
           if (jsonFormattedRef.current) {
-            await navigator.clipboard.writeText(jsonFormattedRef.current);
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                'text/plain': new Blob([jsonFormattedRef.current], { type: 'text/plain' }),
+              }),
+            ]);
           }
           break;
         }
         case 'html': {
-          await navigator.clipboard.writeText(code.trim());
+          const iframe = previewRef.current?.querySelector('iframe');
+          const doc = iframe?.contentDocument;
+          const html = doc?.body?.innerHTML;
+          const plain = doc?.body?.innerText;
+          if (html) {
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([plain || ''], { type: 'text/plain' }),
+              }),
+            ]);
+          }
           break;
         }
         case 'mermaid': {
@@ -631,8 +646,14 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
         case 'markdown':
         default: {
           const html = previewRef.current?.innerHTML;
+          const plain = previewRef.current?.innerText;
           if (html) {
-            await navigator.clipboard.writeText(html);
+            await navigator.clipboard.write([
+              new ClipboardItem({
+                'text/html': new Blob([html], { type: 'text/html' }),
+                'text/plain': new Blob([plain || ''], { type: 'text/plain' }),
+              }),
+            ]);
           }
           break;
         }
