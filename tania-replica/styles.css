@@ -2682,7 +2682,7 @@ kbd:hover{
 /* Back to Top — 圆形毛玻璃 */
 #back-to-top {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-on-accent);
   border: none;
   border-radius: 50%;
   width: 44px;
@@ -2728,7 +2728,7 @@ kbd:hover{
 }
 .filter-btn.active {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-text-on-accent);
   border-color: var(--color-primary);
 }
 
