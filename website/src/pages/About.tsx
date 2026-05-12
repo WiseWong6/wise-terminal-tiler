@@ -132,6 +132,14 @@ export default function About() {
             >
               小红书
             </a>
+            <a
+              href="https://www.douyin.com/user/MS4wLjABAAAAH9nnezGOIpAhJpVqxT-h6oqeL6IQduXj54YnE7vCi5Hm0UgUd8fvo8DdKAwbHOb5"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-lg border border-warm-200 bg-white px-4 py-2.5 text-sm font-semibold text-warm-700 transition hover:border-warm-300"
+            >
+              抖音
+            </a>
           </div>
 
           <div className="mt-6">
