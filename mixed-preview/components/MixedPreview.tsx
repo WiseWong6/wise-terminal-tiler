@@ -1173,20 +1173,21 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
           const doc = iframe?.contentDocument;
           let payload: CopyPayload;
           if (doc?.body) {
-            // Copy the raw HTML from iframe body as-is (with <style> tags
-            // preserved), similar to lobster.html's approach. Don't use
-            // appendInlineStyles — getComputedStyle loses flex/percent layout
-            // semantics and breaks 135-editor templates.
-            const styles = Array.from(
-              doc.querySelectorAll('style'),
-            )
-              .map((el) => el.outerHTML)
-              .join('');
-            const plain = doc.body.innerText || '';
-            const wrapper = document.createElement('section');
-            wrapper.style.cssText = `max-width:${WECHAT_ARTICLE_WIDTH}px;margin:0 auto;box-sizing:border-box;background:#ffffff;`;
-            wrapper.innerHTML = styles + doc.body.innerHTML;
-            payload = { html: wrapper.outerHTML, plain };
+            // Inline computed styles but skip cleanupPortableHtml — it strips
+            // width from <section> elements which breaks flex layouts used by
+            // 135-editor and similar rich HTML templates.
+            const bodyClone = doc.body.cloneNode(true) as HTMLElement;
+            appendInlineStyles(doc.body, bodyClone);
+            const plain = getReadableText(bodyClone);
+            const replacement = document.createElement('section');
+            const bodyStyle = bodyClone.getAttribute('style');
+            replacement.style.cssText =
+              (bodyStyle ? bodyStyle + ';' : '') +
+              `max-width:${WECHAT_ARTICLE_WIDTH}px;margin:0 auto;box-sizing:border-box;background:#ffffff;`;
+            while (bodyClone.firstChild) {
+              replacement.appendChild(bodyClone.firstChild);
+            }
+            payload = { html: replacement.outerHTML, plain };
           } else {
             console.warn(
               'iframe.contentDocument unavailable, falling back to raw HTML source',
