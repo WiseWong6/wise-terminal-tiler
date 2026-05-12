@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { PanelLeft, Code, Settings, Github } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { Code, Settings, Github } from 'lucide-react';
 import Editor from './components/Editor';
 import MixedPreview from './components/MixedPreview';
 import AISettingsModal from './components/AISettingsModal';
 import { useDebounce } from './hooks/useDebounce';
 import {
-  DEFAULT_MERMAID_CODE,
-  SAMPLE_SEQUENCE,
+  SAMPLE_MERMAID,
   SAMPLE_MIXED,
   SAMPLE_JSON,
   SAMPLE_MARKDOWN,
@@ -15,16 +14,56 @@ import {
 import { AIConfig } from './types/ai-config';
 import { loadAIConfig, saveAIConfig, fixCodeWithAI } from './services/ai-service';
 
+const MIN_SIDEBAR_WIDTH = 280;
+const DEFAULT_SIDEBAR_WIDTH = 420;
+
 const App: React.FC = () => {
   const [code, setCode] = useState<string>(SAMPLE_MIXED);
   const [error, setError] = useState<string | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [isFixing, setIsFixing] = useState(false);
   const [aiConfig, setAiConfig] = useState<AIConfig | null>(() => loadAIConfig());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [activeSample, setActiveSample] = useState<string>('Mixed');
+  const isDragging = useRef(false);
 
   const [debouncedCode, flushCode] = useDebounce(code, 600);
+
+  const isCollapsed = sidebarWidth === 0;
+
+  const toggleSidebar = useCallback(() => {
+    setSidebarWidth(prev => prev === 0 ? DEFAULT_SIDEBAR_WIDTH : 0);
+  }, []);
+
+  const startDrag = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    const startX = e.clientX;
+    const startWidth = sidebarWidth || DEFAULT_SIDEBAR_WIDTH;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return;
+      const newWidth = startWidth + (e.clientX - startX);
+      if (newWidth < MIN_SIDEBAR_WIDTH) {
+        setSidebarWidth(0);
+      } else {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [sidebarWidth]);
 
   const loadSample = (label: string, sample: string) => {
     setCode(sample);
@@ -86,8 +125,7 @@ const App: React.FC = () => {
               ['Markdown', SAMPLE_MARKDOWN],
               ['HTML', SAMPLE_HTML],
               ['JSON', SAMPLE_JSON],
-              ['Flowchart', DEFAULT_MERMAID_CODE],
-              ['Sequence', SAMPLE_SEQUENCE],
+              ['Mermaid', SAMPLE_MERMAID],
             ].map(([label, sample]) => (
               <button
                 key={label}
@@ -104,7 +142,7 @@ const App: React.FC = () => {
           </div>
 
           <a
-            href="https://github.com/WiseWong6/wise-labs"
+            href="https://github.com/WiseWong6/wise-labs/tree/main/mixed-preview"
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -121,22 +159,14 @@ const App: React.FC = () => {
             <Settings size={20} />
           </button>
 
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`p-2 rounded-md transition-colors ${isSidebarOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'}`}
-            title="Toggle Sidebar"
-          >
-            <PanelLeft size={20} />
-          </button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
         <div
-          className={`${
-            isSidebarOpen ? 'w-full md:w-[35%]' : 'w-0'
-          } flex-shrink-0 transition-all duration-300 ease-in-out overflow-hidden`}
+          className="flex-shrink-0 overflow-hidden"
+          style={{ width: isCollapsed ? 0 : sidebarWidth }}
         >
           <Editor
             value={code}
@@ -144,11 +174,21 @@ const App: React.FC = () => {
             error={error}
             onFix={handleFixCode}
             isFixing={isFixing}
+            isCollapsed={isCollapsed}
+            onToggleSidebar={toggleSidebar}
           />
         </div>
 
+        {/* Drag handle */}
+        <div
+          className={`relative flex-shrink-0 w-1 group cursor-col-resize transition-colors ${
+            isCollapsed ? 'bg-transparent' : 'bg-transparent hover:bg-indigo-400'
+          }`}
+          onMouseDown={startDrag}
+        />
+
         <div className="flex-1 h-full min-w-0 bg-slate-50">
-          <MixedPreview code={debouncedCode} onError={setError} />
+          <MixedPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} onToggleSidebar={toggleSidebar} />
         </div>
       </main>
 

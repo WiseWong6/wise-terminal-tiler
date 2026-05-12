@@ -1,5 +1,5 @@
-import React from 'react';
-import { Copy, Wand2, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Copy, Check, Wand2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface EditorProps {
   value: string;
@@ -7,24 +7,52 @@ interface EditorProps {
   error?: string | null;
   onFix?: () => void;
   isFixing?: boolean;
+  isCollapsed?: boolean;
+  onToggleSidebar?: () => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing = false }) => {
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value);
+const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing = false, isCollapsed = false, onToggleSidebar }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
   };
 
   return (
     <div className="flex flex-col h-full bg-white border-r border-slate-200">
       <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
         <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Editor</h2>
-        <button
-          onClick={handleCopy}
-          className="p-1.5 hover:bg-slate-200 rounded text-slate-500 hover:text-slate-900 transition-colors"
-          title="Copy Code"
-        >
-          <Copy size={16} />
-        </button>
+        <div className="flex items-center space-x-2">
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
+              title={isCollapsed ? '展开编辑器' : '收起编辑器'}
+            >
+              {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            </button>
+          )}
+          <button
+            onClick={handleCopy}
+            disabled={!value || copied}
+            className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              copied
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+            title={copied ? '已复制' : '复制原格式'}
+          >
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span>{copied ? '已复制' : '复制'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="relative flex-1 overflow-hidden">

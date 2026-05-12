@@ -13,7 +13,7 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'default',
   securityLevel: 'loose',
-  fontFamily: 'Inter, sans-serif',
+  fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
 });
 
 interface MixedPreviewProps {
@@ -97,10 +97,15 @@ const MermaidDiagram: React.FC<{ code: string; scale: number }> = ({ code, scale
         if (isMounted) {
           let cleanedSvg = svg
             .replace(/style="[^"]*max-width:[^"]*"/gi, '');
-        // Normalize diagram size: use a fixed scale so all diagrams' internal elements look the same
-        const vbMatch = cleanedSvg.match(/viewBox="[^"]*\s([\d.]+)\s([\d.]+)"/);
+        // Expand viewBox to prevent CJK text clipping, then normalize width
+        const vbMatch = cleanedSvg.match(/viewBox="([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"/);
         if (vbMatch) {
-          const vbW = parseFloat(vbMatch[1]);
+          const [, vbX, vbY, vbW, vbH] = vbMatch.map(Number);
+          const pad = 8;
+          cleanedSvg = cleanedSvg.replace(
+            /viewBox="[^"]*"/,
+            `viewBox="${vbX} ${vbY - pad} ${vbW} ${vbH + pad * 2}"`
+          );
           const renderWidth = Math.round(vbW * 0.79);
           cleanedSvg = cleanedSvg.replace(/width="[^"]*"/, `width="${renderWidth}px"`);
         }
@@ -270,30 +275,58 @@ const JsonViewer: React.FC<{ code: string; scale: number }> = ({ code, scale }) 
       <div className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex items-center">
         <span>JSON</span>
       </div>
-      <ZoomableWrapper scale={scale} className="!m-0 !rounded-none">
-        <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none">
-          {formatted}
-        </SyntaxHighlighter>
-      </ZoomableWrapper>
+      <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none">
+        {formatted}
+      </SyntaxHighlighter>
     </div>
   );
 };
 
 // A component to render HTML in an iframe
 const HtmlPreview: React.FC<{ code: string; scale: number }> = ({ code, scale }) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeHeight, setIframeHeight] = useState(400);
+
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+
+    const adjustHeight = () => {
+      try {
+        const doc = iframe.contentDocument;
+        if (doc) {
+          const height = Math.max(
+            doc.body.scrollHeight,
+            doc.documentElement.scrollHeight
+          );
+          setIframeHeight(height);
+        }
+      } catch (e) {
+        // fallback: keep default height
+      }
+    };
+
+    iframe.onload = adjustHeight;
+    const timer = setTimeout(adjustHeight, 500);
+    const timer2 = setTimeout(adjustHeight, 1000);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(timer2);
+    };
+  }, [code]);
+
   return (
-    <div className="my-4 rounded border border-slate-200 shadow-sm bg-white h-[800px] flex flex-col">
+    <div className="my-4 rounded border border-slate-200 shadow-sm bg-white flex flex-col">
       <div className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex items-center shrink-0">
         <span>HTML Preview</span>
       </div>
-      <ZoomableWrapper scale={scale} className="w-full flex-1">
-        <iframe
-          srcDoc={code}
-          className="w-full border-none bg-white"
-          style={{ minHeight: '780px' }}
-          sandbox="allow-scripts allow-same-origin"
-        />
-      </ZoomableWrapper>
+      <iframe
+        ref={iframeRef}
+        srcDoc={code}
+        className="w-full border-none bg-white"
+        style={{ minHeight: '200px', height: `${iframeHeight}px` }}
+        sandbox="allow-scripts allow-same-origin"
+      />
     </div>
   );
 };
@@ -305,6 +338,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollRatio = useRef(0);
+  const naturalContentWidthRef = useRef(0);
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
   // Pre-process the code to auto-detect pure JSON or pure Mermaid if not wrapped
@@ -393,12 +427,52 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
     if (!content) return;
     const paddingX = 64; // p-8 = 2rem * 2 sides
     const viewWidth = el.clientWidth - paddingX;
-    const contentWidth = content.scrollWidth;
+    const contentWidth = naturalContentWidthRef.current || content.scrollWidth;
     if (contentWidth <= 0 || viewWidth <= 0) return;
     const target = viewWidth / contentWidth;
     savedScrollRatio.current = 0;
     setScale(target);
   }, [setScale]);
+
+  // Auto-fit on content change: poll until content width stabilizes (handles async Mermaid)
+  useEffect(() => {
+    setScale(1);
+    naturalContentWidthRef.current = 0;
+
+    let attempts = 0;
+    let lastWidth = 0;
+    let stableCount = 0;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
+    const check = () => {
+      const el = scrollContainerRef.current;
+      const content = previewRef.current;
+      if (!el || !content || attempts >= 12) return;
+      attempts++;
+      const w = content.scrollWidth;
+      if (w > 0 && w === lastWidth) {
+        stableCount++;
+        if (stableCount >= 2) {
+          const viewWidth = el.clientWidth - 64;
+          const target = viewWidth / w;
+          if (target < 1 && target > 0.2) {
+            savedScrollRatio.current = 0;
+            setScale(target);
+          }
+          naturalContentWidthRef.current = w;
+          return;
+        }
+      } else {
+        stableCount = 0;
+        lastWidth = w;
+      }
+      timeoutId = setTimeout(check, 300);
+    };
+
+    timeoutId = setTimeout(check, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [processedCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopy = async () => {
     const text = previewRef.current?.innerText;

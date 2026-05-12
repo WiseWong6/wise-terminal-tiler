@@ -4,9 +4,10 @@ interface ZoomableWrapperProps {
   children: React.ReactNode;
   className?: string;
   scale: number;
+  fullWidth?: boolean;
 }
 
-const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className = '', scale }) => {
+const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className = '', scale, fullWidth }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
@@ -22,10 +23,10 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
       el.style.transform = 'none';
       const rect = el.getBoundingClientRect();
       el.style.transform = originalTransform;
-      setNaturalSize({ width: rect.width, height: rect.height });
+      setNaturalSize({ width: rect.width, height: rect.height + 10 });
     };
     measure();
-    const timer = setTimeout(measure, 300);
+    const timer = setTimeout(measure, 800);
     return () => clearTimeout(timer);
   }, [children]);
 
@@ -65,6 +66,7 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
       style={{ cursor: isPanning ? 'grabbing' : scale !== 1 ? 'grab' : 'default' }}
     >
       <div
+        className={fullWidth ? 'w-full' : ''}
         style={{
           minWidth: scaledWidth,
           minHeight: scaledHeight,
@@ -75,7 +77,8 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
           style={{
             transform: `scale(${scale})`,
             transformOrigin: 'top left',
-            display: 'inline-block',
+            display: fullWidth ? 'block' : 'inline-block',
+            width: fullWidth ? '100%' : undefined,
           }}
         >
           {children}

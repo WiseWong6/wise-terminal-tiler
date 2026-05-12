@@ -132,6 +132,38 @@ export const SAMPLE_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
+export const SAMPLE_MERMAID = `## Mermaid — Flowchart
+
+\`\`\`mermaid
+graph TD
+  A[Start] --> B{Is it working?}
+  B -- Yes --> C[Great!]
+  B -- No --> D[Debug]
+  D --> B
+  C --> E[Deploy]
+  E --> F[Relax]
+  
+  style A fill:#f9f,stroke:#333,stroke-width:2px
+  style F fill:#bbf,stroke:#333,stroke-width:2px
+\`\`\`
+
+## Mermaid — Sequence
+
+\`\`\`mermaid
+sequenceDiagram
+    participant Alice
+    participant Bob
+    Alice->>John: Hello John, how are you?
+    loop Healthcheck
+        John->>John: Fight against hypochondria
+    end
+    Note right of John: Rational thoughts <br/>prevail!
+    John-->>Alice: Great!
+    John->>Bob: How about you?
+    Bob-->>John: Jolly good!
+\`\`\`
+`;
+
 export const SAMPLE_CLASS = `classDiagram
     Animal <|-- Duck
     Animal <|-- Fish

@@ -1,3 +1,13 @@
 .mermaid-container > svg {
   max-width: 100%;
 }
+
+/* CJK 字符底部不被裁切 */
+pre, code {
+  line-height: 1.6;
+}
+
+/* Mermaid SVG 文字防止裁切 */
+.mermaid-container svg text {
+  overflow: visible;
+}
