@@ -82,8 +82,117 @@ const useZoom = () => {
   };
 };
 
+type ContentType = 'markdown' | 'json' | 'html' | 'mermaid' | 'mixed';
+
+const detectContentType = (rawCode: string): ContentType => {
+  const trimmed = rawCode.trim();
+  if (!trimmed) return 'markdown';
+
+  // Pure JSON
+  if (
+    (trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+    (trimmed.startsWith('[') && trimmed.endsWith(']'))
+  ) {
+    try {
+      JSON5.parse(trimmed);
+      return 'json';
+    } catch {
+      // fall through
+    }
+  }
+
+  // Pure HTML
+  if (
+    trimmed.toLowerCase().startsWith('<!doctype html>') ||
+    trimmed.toLowerCase().startsWith('<html')
+  ) {
+    return 'html';
+  }
+
+  // Pure Mermaid
+  const mermaidKeywords = [
+    'graph', 'flowchart', 'sequenceDiagram', 'classDiagram',
+    'stateDiagram', 'erDiagram', 'gantt', 'pie',
+    'journey', 'mindmap', 'timeline', 'gitGraph',
+  ];
+  const firstWord = trimmed.split(/\s+/)[0];
+  if (mermaidKeywords.includes(firstWord)) {
+    return 'mermaid';
+  }
+
+  // Mixed: contains two or more code blocks
+  const codeBlockMatches = trimmed.match(/```[a-zA-Z]/g);
+  if (codeBlockMatches && codeBlockMatches.length >= 2) {
+    return 'mixed';
+  }
+
+  return 'markdown';
+};
+
+// Convert SVG string to PNG Blob for clipboard
+const svgToPngBlob = (svgContent: string): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
+    const svgEl = doc.documentElement;
+    svgEl.removeAttribute('style');
+
+    const viewBox = svgEl.getAttribute('viewBox');
+    let nativeWidth = 0;
+    let nativeHeight = 0;
+    if (viewBox) {
+      const parts = viewBox.split(/\s+|,/).filter(Boolean);
+      if (parts.length >= 4) {
+        nativeWidth = parseFloat(parts[2]);
+        nativeHeight = parseFloat(parts[3]);
+      }
+    }
+    if (!nativeWidth) nativeWidth = parseFloat(svgEl.getAttribute('width') || '0');
+    if (!nativeHeight) nativeHeight = parseFloat(svgEl.getAttribute('height') || '0');
+    if (nativeWidth && nativeHeight) {
+      svgEl.setAttribute('width', nativeWidth.toString());
+      svgEl.setAttribute('height', nativeHeight.toString());
+    }
+
+    const serializer = new XMLSerializer();
+    const newSvgString = serializer.serializeToString(svgEl);
+
+    const img = new Image();
+    const svg64 = btoa(unescape(encodeURIComponent(newSvgString)));
+    const image64 = `data:image/svg+xml;base64,${svg64}`;
+
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const targetWidth = 2500;
+      let scale = 3;
+      if (img.width < targetWidth) {
+        scale = targetWidth / img.width;
+      }
+      scale = Math.min(scale, 10);
+      canvas.width = Math.ceil(img.width * scale);
+      canvas.height = Math.ceil(img.height * scale);
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to create blob'));
+      }, 'image/png');
+    };
+    img.onerror = () => reject(new Error('Failed to load SVG image'));
+    img.src = image64;
+  });
+};
+
 // A component to render a single Mermaid diagram
-const MermaidDiagram: React.FC<{ code: string; scale: number }> = ({ code, scale }) => {
+const MermaidDiagram: React.FC<{ code: string; scale: number; onSvgReady?: (svg: string) => void }> = ({ code, scale, onSvgReady }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +220,7 @@ const MermaidDiagram: React.FC<{ code: string; scale: number }> = ({ code, scale
         }
           setSvgContent(cleanedSvg);
           setError(null);
+          onSvgReady?.(cleanedSvg);
         }
       } catch (e) {
         if (isMounted) {
@@ -122,7 +232,7 @@ const MermaidDiagram: React.FC<{ code: string; scale: number }> = ({ code, scale
     return () => {
       isMounted = false;
     };
-  }, [code]);
+  }, [code, onSvgReady]);
 
   const handleDownloadSVG = () => {
     if (!svgContent) return;
@@ -242,7 +352,7 @@ const MermaidDiagram: React.FC<{ code: string; scale: number }> = ({ code, scale
 };
 
 // A component to render JSON
-const JsonViewer: React.FC<{ code: string; scale: number }> = ({ code, scale }) => {
+const JsonViewer: React.FC<{ code: string; scale: number; onFormatted?: (formatted: string) => void }> = ({ code, scale, onFormatted }) => {
   let parsed: any;
   let formatted = code;
   let error = null;
@@ -252,6 +362,12 @@ const JsonViewer: React.FC<{ code: string; scale: number }> = ({ code, scale }) 
   } catch (e) {
     error = e instanceof Error ? e.message : 'Invalid JSON';
   }
+
+  useEffect(() => {
+    if (!error) {
+      onFormatted?.(formatted);
+    }
+  }, [formatted, error, onFormatted]);
 
   if (error) {
     return (
@@ -341,6 +457,20 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
   const naturalContentWidthRef = useRef(0);
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
+
+  const contentType = detectContentType(code);
+  const mermaidSvgRef = useRef<string>('');
+  const jsonFormattedRef = useRef<string>('');
+
+  const copyLabel = useMemo(() => {
+    switch (contentType) {
+      case 'json': return '复制 JSON';
+      case 'html': return '复制 HTML';
+      case 'mermaid': return '复制图片';
+      case 'mixed': return '复制 HTML';
+      default: return '复制';
+    }
+  }, [contentType]);
   // Pre-process the code to auto-detect pure JSON or pure Mermaid if not wrapped
   const preprocessCode = (input: string) => {
     const trimmed = input.trim();
@@ -475,10 +605,38 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
   }, [processedCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopy = async () => {
-    const text = previewRef.current?.innerText;
-    if (!text || !text.trim()) return;
+    if (!code.trim()) return;
     try {
-      await navigator.clipboard.writeText(text.trim());
+      switch (contentType) {
+        case 'json': {
+          if (jsonFormattedRef.current) {
+            await navigator.clipboard.writeText(jsonFormattedRef.current);
+          }
+          break;
+        }
+        case 'html': {
+          await navigator.clipboard.writeText(code.trim());
+          break;
+        }
+        case 'mermaid': {
+          if (mermaidSvgRef.current) {
+            const blob = await svgToPngBlob(mermaidSvgRef.current);
+            await navigator.clipboard.write([
+              new ClipboardItem({ 'image/png': blob }),
+            ]);
+          }
+          break;
+        }
+        case 'mixed':
+        case 'markdown':
+        default: {
+          const html = previewRef.current?.innerHTML;
+          if (html) {
+            await navigator.clipboard.writeText(html);
+          }
+          break;
+        }
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -507,16 +665,16 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
         </div>
         <button
           onClick={handleCopy}
-          disabled={!processedCode || copied}
+          disabled={!processedCode || copied || (contentType === 'mermaid' && !mermaidSvgRef.current)}
           className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
             copied
               ? 'bg-green-50 text-green-700 border-green-200'
               : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
           }`}
-          title={copied ? '已复制' : '复制渲染后文本'}
+          title={copied ? '已复制' : copyLabel}
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}
-          <span>{copied ? '已复制' : '复制'}</span>
+          <span>{copied ? '已复制' : copyLabel}</span>
         </button>
       </div>
       <div ref={scrollContainerRef} className="relative overflow-auto" style={{ height: 'calc(100% - 45px)' }}>
@@ -544,11 +702,11 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({ code, onError, isCollapsed 
                 const isBlock = Boolean(match);
 
                 if (isBlock && language === 'mermaid') {
-                  return <MermaidDiagram code={content} scale={scaleRef.current} />;
+                  return <MermaidDiagram code={content} scale={scaleRef.current} onSvgReady={(svg) => { mermaidSvgRef.current = svg; }} />;
                 }
 
                 if (isBlock && language === 'json') {
-                  return <JsonViewer code={content} scale={scaleRef.current} />;
+                  return <JsonViewer code={content} scale={scaleRef.current} onFormatted={(formatted) => { jsonFormattedRef.current = formatted; }} />;
                 }
 
                 if (isBlock && language === 'html-preview') {
