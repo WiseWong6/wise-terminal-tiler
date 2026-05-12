@@ -28,3 +28,9 @@ dist-ssr
 # Directories managed by separate repos
 website/
 tania-replica/
+
+# Local/dev directories not for GitHub
+.github/workflows/
+.playwright-mcp/
+.spec-workflow/
+page-*.yml
