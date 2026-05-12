@@ -15,6 +15,7 @@ import {
   ZoomOut,
   RotateCcw,
   Maximize2,
+  Camera,
 } from 'lucide-react';
 import ZoomableWrapper from './ZoomableWrapper';
 import JSON5 from 'json5';
@@ -640,6 +641,64 @@ const buildIframeCopyPayload = (doc: Document): CopyPayload => {
   };
 };
 
+const captureHtmlScreenshot = async (iframeBody: HTMLElement): Promise<Blob> => {
+  const html2canvas = (await import('html2canvas')).default;
+  const iframeDoc = iframeBody.ownerDocument;
+
+  // Copy both <style> and <link rel="stylesheet"> from iframe
+  const styles = Array.from(
+    iframeDoc.querySelectorAll('style, link[rel="stylesheet"]'),
+  )
+    .map((el) => el.outerHTML)
+    .join('');
+
+  const container = document.createElement('div');
+  container.style.cssText = [
+    'position:fixed',
+    'left:-9999px',
+    'top:0',
+    `width:${WECHAT_ARTICLE_WIDTH}px`,
+    'background:#ffffff',
+  ].join(';');
+  container.innerHTML = styles + iframeBody.innerHTML;
+  document.body.appendChild(container);
+
+  // Wait for all <link> stylesheets and fonts to load
+  const linkElements = Array.from(
+    container.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
+  );
+  if (linkElements.length > 0) {
+    await Promise.all(
+      linkElements.map(
+        (link) =>
+          new Promise<void>((resolve) => {
+            link.onload = () => resolve();
+            link.onerror = () => resolve();
+          }),
+      ),
+    );
+    // Extra delay for webfont rendering
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  try {
+    const canvas = await html2canvas(container, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      useCORS: true,
+    });
+
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('Failed to create blob'));
+      }, 'image/png');
+    });
+  } finally {
+    document.body.removeChild(container);
+  }
+};
+
 // A component to render a single Mermaid diagram
 const MermaidDiagram: React.FC<{
   code: string;
@@ -908,7 +967,6 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
         srcDoc={code}
         className="w-full border-none bg-white"
         style={{ minHeight: '200px', height: `${iframeHeight}px` }}
-        sandbox="allow-scripts allow-same-origin"
       />
     </div>
   );
@@ -923,6 +981,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   const { scale, zoomIn, zoomOut, reset, setScale } = useZoom();
   const [copied, setCopied] = useState(false);
   const [copiedImages, setCopiedImages] = useState(false);
+  const [copiedScreenshot, setCopiedScreenshot] = useState(false);
   const [mermaidCount, setMermaidCount] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1112,8 +1171,33 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
         case 'html': {
           const iframe = previewRef.current?.querySelector('iframe');
           const doc = iframe?.contentDocument;
-          if (!doc?.body) throw new Error('HTML preview is not ready');
-          const payload = buildIframeCopyPayload(doc);
+          let payload: CopyPayload;
+          if (doc?.body) {
+            // Inline computed styles but skip cleanupPortableHtml — it strips
+            // width from <section> elements which breaks flex layouts used by
+            // 135-editor and similar rich HTML templates.
+            const bodyClone = doc.body.cloneNode(true) as HTMLElement;
+            appendInlineStyles(doc.body, bodyClone);
+            const plain = getReadableText(bodyClone);
+            const replacement = document.createElement('section');
+            const bodyStyle = bodyClone.getAttribute('style');
+            replacement.style.cssText =
+              (bodyStyle ? bodyStyle + ';' : '') +
+              `max-width:${WECHAT_ARTICLE_WIDTH}px;margin:0 auto;box-sizing:border-box;background:#ffffff;`;
+            while (bodyClone.firstChild) {
+              replacement.appendChild(bodyClone.firstChild);
+            }
+            payload = { html: replacement.outerHTML, plain };
+          } else {
+            console.warn(
+              'iframe.contentDocument unavailable, falling back to raw HTML source',
+            );
+            const fallbackDoc = new DOMParser().parseFromString(
+              code,
+              'text/html',
+            );
+            payload = buildIframeCopyPayload(fallbackDoc);
+          }
           await copyRichHtml(payload.html, payload.plain);
           break;
         }
@@ -1173,6 +1257,32 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     }
   };
 
+  const handleCopyScreenshot = async () => {
+    if (!previewRef.current) return;
+    try {
+      const iframe = previewRef.current.querySelector('iframe');
+      const doc = iframe?.contentDocument;
+      if (!doc?.body) throw new Error('HTML preview is not ready');
+
+      const blob = await captureHtmlScreenshot(doc.body);
+      const imageUrl = await blobToDataUrl(blob);
+      const html = createResponsiveImageHtml(imageUrl, 'HTML preview screenshot');
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob,
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob(['HTML preview screenshot'], { type: 'text/plain' }),
+        }),
+      ]);
+
+      setCopiedScreenshot(true);
+      setTimeout(() => setCopiedScreenshot(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy HTML screenshot:', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
       <div
@@ -1228,6 +1338,21 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
             >
               {copiedImages ? <Check size={14} /> : <ImageIcon size={14} />}
               <span>{copiedImages ? '已复制图片' : '复制图片'}</span>
+            </button>
+          )}
+          {contentType === 'html' && (
+            <button
+              onClick={handleCopyScreenshot}
+              disabled={copiedScreenshot}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+                copiedScreenshot
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+              title={copiedScreenshot ? '已复制图片' : '复制 HTML 页面为图片'}
+            >
+              {copiedScreenshot ? <Check size={14} /> : <Camera size={14} />}
+              <span>{copiedScreenshot ? '已复制图片' : '复制图片'}</span>
             </button>
           )}
         </div>
