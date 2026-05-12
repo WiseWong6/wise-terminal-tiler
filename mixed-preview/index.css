@@ -1,4 +1,9 @@
-.mermaid-container > svg {
+.mermaid-container {
+  align-items: center;
+  min-height: 430px;
+}
+
+.mermaid-container svg {
   max-width: 100%;
 }
 
