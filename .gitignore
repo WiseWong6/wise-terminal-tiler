@@ -24,3 +24,7 @@ dist-ssr
 *.sw?
 
 .serena/
+
+# Directories managed by separate repos
+website/
+tania-replica/
