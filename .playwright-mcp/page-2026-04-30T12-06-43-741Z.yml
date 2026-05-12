@@ -1,0 +1,174 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - button "目录" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+        - generic [ref=e9]: 目录
+      - link "Wise" [ref=e10] [cursor=pointer]:
+        - /url: /
+  - main [ref=e11]:
+    - generic [ref=e12]:
+      - generic [ref=e13]:
+        - heading "歪斯 Wise" [level=1] [ref=e14]
+        - paragraph [ref=e15]: AI 产品负责人 · 开源工作流工具作者
+        - paragraph [ref=e16]: 前腾讯，现上市港企 AI 产品负责人。长期输出 AI 产品测评、工作流工具和开源 Skills。
+        - generic [ref=e17]:
+          - generic [ref=e18]: 500w+ 阅读
+          - generic [ref=e19]: ·
+          - generic [ref=e20]: 腾讯技术影响力奖
+        - generic [ref=e21]:
+          - link "浏览 Projects" [ref=e22] [cursor=pointer]:
+            - /url: /projects
+            - text: 浏览 Projects
+            - img [ref=e23]
+          - link "精选知识" [ref=e25] [cursor=pointer]:
+            - /url: /knowledge
+            - text: 精选知识
+            - img [ref=e26]
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - generic [ref=e30]:
+            - heading "Featured Projects" [level=2] [ref=e31]
+            - paragraph [ref=e32]: 项目不分新旧，统一看它解决什么问题。
+          - link "查看全部" [ref=e33] [cursor=pointer]:
+            - /url: /projects
+            - text: 查看全部
+            - img [ref=e34]
+        - generic [ref=e36]:
+          - link "Open Source Mixed Preview 一个编辑器里写 Markdown、Mermaid、JSON、HTML，并实时预览。 写技术内容时，经常要在 Markdown 预览、Mermaid、JSON 格式化、HTML 沙盒之间来回切换。 React Mermaid JSON5 Markdown" [ref=e37] [cursor=pointer]:
+            - /url: /mixed-preview
+            - generic [ref=e38]:
+              - img [ref=e40]
+              - generic [ref=e45]: Open Source
+            - heading "Mixed Preview" [level=3] [ref=e46]
+            - paragraph [ref=e47]: 一个编辑器里写 Markdown、Mermaid、JSON、HTML，并实时预览。
+            - paragraph [ref=e48]: 写技术内容时，经常要在 Markdown 预览、Mermaid、JSON 格式化、HTML 沙盒之间来回切换。
+            - generic [ref=e49]:
+              - generic [ref=e50]: React
+              - generic [ref=e51]: Mermaid
+              - generic [ref=e52]: JSON5
+              - generic [ref=e53]: Markdown
+          - link "Open Source Terminal Tiler 用一个快捷键整理散乱的 iTerm2、Terminal、Ghostty 窗口。 Swift AppleScript Shell" [ref=e54] [cursor=pointer]:
+            - /url: /terminal-tiler
+            - generic [ref=e55]:
+              - img [ref=e57]
+              - generic [ref=e62]: Open Source
+            - heading "Terminal Tiler" [level=3] [ref=e63]
+            - paragraph [ref=e64]: 用一个快捷键整理散乱的 iTerm2、Terminal、Ghostty 窗口。
+            - generic [ref=e65]:
+              - generic [ref=e66]: Swift
+              - generic [ref=e67]: AppleScript
+              - generic [ref=e68]: Shell
+          - link "Open Source Wise Skills 把飞书、提示词、内容创作等日常工作封装成可复用 Skills。 Claude Skills Lark Prompt" [ref=e69] [cursor=pointer]:
+            - /url: /skills
+            - generic [ref=e70]:
+              - img [ref=e72]
+              - generic [ref=e74]: Open Source
+            - heading "Wise Skills" [level=3] [ref=e75]
+            - paragraph [ref=e76]: 把飞书、提示词、内容创作等日常工作封装成可复用 Skills。
+            - generic [ref=e77]:
+              - generic [ref=e78]: Claude Skills
+              - generic [ref=e79]: Lark
+              - generic [ref=e80]: Prompt
+          - link "Coming Soon Swiss Editorial 面向 AI 生成图文内容的 Swiss editorial 组件风格目录。 Editorial Visual System AI Content" [ref=e81] [cursor=pointer]:
+            - /url: /projects
+            - generic [ref=e82]:
+              - img [ref=e84]
+              - generic [ref=e87]: Coming Soon
+            - heading "Swiss Editorial" [level=3] [ref=e88]
+            - paragraph [ref=e89]: 面向 AI 生成图文内容的 Swiss editorial 组件风格目录。
+            - generic [ref=e90]:
+              - generic [ref=e91]: Editorial
+              - generic [ref=e92]: Visual System
+              - generic [ref=e93]: AI Content
+          - link "Prototype 名人知识库 围绕科技领袖、商业大师、产品思想家的结构化第二大脑。 Second Brain Knowledge Base Writing" [ref=e94] [cursor=pointer]:
+            - /url: /projects
+            - generic [ref=e95]:
+              - img [ref=e97]
+              - generic [ref=e109]: Prototype
+            - heading "名人知识库" [level=3] [ref=e110]
+            - paragraph [ref=e111]: 围绕科技领袖、商业大师、产品思想家的结构化第二大脑。
+            - generic [ref=e112]:
+              - generic [ref=e113]: Second Brain
+              - generic [ref=e114]: Knowledge Base
+              - generic [ref=e115]: Writing
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - generic [ref=e119]:
+            - heading "Knowledge" [level=2] [ref=e120]
+            - paragraph [ref=e121]: 「歪斯的 AI 见闻」精选主题入口。先展示研究方向，不搬空整个知识库。
+          - link "进入 Knowledge" [ref=e122] [cursor=pointer]:
+            - /url: /knowledge
+            - text: 进入 Knowledge
+            - img [ref=e123]
+        - generic [ref=e125]:
+          - link "Product Manager AI 产品 从产品经理视角解释 AI 产品的底层原理、工程化、评测体系和普通人的时代变化。 产品方法论 工程化 评测体系" [ref=e126] [cursor=pointer]:
+            - /url: /knowledge
+            - paragraph [ref=e127]: Product Manager
+            - heading "AI 产品" [level=3] [ref=e128]
+            - paragraph [ref=e129]: 从产品经理视角解释 AI 产品的底层原理、工程化、评测体系和普通人的时代变化。
+            - generic [ref=e130]:
+              - generic [ref=e131]: 产品方法论
+              - generic [ref=e132]: 工程化
+              - generic [ref=e133]: 评测体系
+          - link "Model & App 模型测评 跟踪最新模型发布、实战测评和能力边界，沉淀面向真实工作的判断标准。 模型能力 实战测评 Agent" [ref=e134] [cursor=pointer]:
+            - /url: /knowledge
+            - paragraph [ref=e135]: Model & App
+            - heading "模型测评" [level=3] [ref=e136]
+            - paragraph [ref=e137]: 跟踪最新模型发布、实战测评和能力边界，沉淀面向真实工作的判断标准。
+            - generic [ref=e138]:
+              - generic [ref=e139]: 模型能力
+              - generic [ref=e140]: 实战测评
+              - generic [ref=e141]: Agent
+          - link "AI Workflow Prompt / Skills 把提示词、Skills 和工作流封装成可以复用、可以交给 AI 助手执行的能力单元。 Prompt Skills 内容创作" [ref=e142] [cursor=pointer]:
+            - /url: /knowledge
+            - paragraph [ref=e143]: AI Workflow
+            - heading "Prompt / Skills" [level=3] [ref=e144]
+            - paragraph [ref=e145]: 把提示词、Skills 和工作流封装成可以复用、可以交给 AI 助手执行的能力单元。
+            - generic [ref=e146]:
+              - generic [ref=e147]: Prompt
+              - generic [ref=e148]: Skills
+              - generic [ref=e149]: 内容创作
+          - link "更多主题 效率工具 · AI Coding 实践" [ref=e150] [cursor=pointer]:
+            - /url: /knowledge
+            - paragraph [ref=e151]: 更多主题
+            - paragraph [ref=e152]: 效率工具 · AI Coding 实践
+            - img [ref=e153]
+      - generic [ref=e156]:
+        - generic [ref=e157]:
+          - heading "About" [level=2] [ref=e158]
+          - paragraph [ref=e159]: 我每月持续测试最新 AI 产品，把筛选结果、产品判断和实战技巧写成内容， 也把自己的高频工作流做成工具。这个网站是一个公开入口：你可以从项目看到工具， 从知识主题看到判断框架，从社交平台继续追踪更新。
+          - generic [ref=e160]:
+            - link "GitHub" [ref=e161] [cursor=pointer]:
+              - /url: https://github.com/WiseWong6
+              - img [ref=e162]
+              - text: GitHub
+            - link "X / Twitter" [ref=e164] [cursor=pointer]:
+              - /url: https://x.com/killthewhys
+              - text: X / Twitter
+              - img [ref=e165]
+            - link "小红书" [ref=e169] [cursor=pointer]:
+              - /url: https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73
+              - text: 小红书
+              - img [ref=e170]
+        - generic [ref=e174]:
+          - img "歪斯 Wise 公众号二维码" [ref=e175]
+          - paragraph [ref=e176]:
+            - text: 公众号 / 歪斯 Wise
+            - text: 扫码继续看长期内容
+  - contentinfo [ref=e177]:
+    - generic [ref=e178]:
+      - generic [ref=e179]:
+        - paragraph [ref=e180]: © 2026 Wise Wong
+        - paragraph [ref=e181]: AI 工作流实验室：工具、知识产品和开源 Skills
+      - generic [ref=e182]:
+        - link "Projects" [ref=e183] [cursor=pointer]:
+          - /url: /projects
+        - link "Knowledge" [ref=e184] [cursor=pointer]:
+          - /url: /knowledge
+        - link "About" [ref=e185] [cursor=pointer]:
+          - /url: /about
+        - link "GitHub" [ref=e186] [cursor=pointer]:
+          - /url: https://github.com/WiseWong6
+        - link "X" [ref=e187] [cursor=pointer]:
+          - /url: https://x.com/killthewhys

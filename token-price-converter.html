@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token 价格换算器 - 梯度版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 700px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 24px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .tier-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .tier-row {
+            display: grid;
+            grid-template-columns: 70px 1fr 1fr 1fr 1fr 40px;
+            gap: 8px;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+        
+        .tier-row:hover {
+            border-color: #e0e0e0;
+        }
+        
+        .tier-index {
+            font-size: 13px;
+            color: #888;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .tier-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .tier-field label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        .tier-field input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .tier-field input:focus {
+            border-color: #667eea;
+        }
+        
+        .tier-field .hint {
+            font-size: 10px;
+            color: #bbb;
+        }
+        
+        .remove-btn {
+            background: none;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .remove-btn:hover {
+            color: #e74c3c;
+            background: #fdeaea;
+        }
+        
+        .add-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-bottom: 25px;
+        }
+        
+        .add-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .add-btn:active {
+            transform: scale(0.98);
+        }
+        
+        .output-section {
+            margin-top: 10px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        .copy-hint {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        pre {
+            color: #d4d4d4;
+            font-family: "SF Mono", Monaco, "Cascadia Code", "Fira Code", monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            overflow-x: auto;
+            white-space: pre;
+        }
+        
+        .key {
+            color: #9cdcfe;
+        }
+        
+        .string {
+            color: #ce9178;
+        }
+        
+        .number {
+            color: #b5cea8;
+        }
+        
+        .punctuation {
+            color: #d4d4d4;
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #ccc;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        .copy-btn.copied {
+            background: #4caf50;
+            border-color: #4caf50;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            color: #888;
+            padding: 30px;
+            font-size: 14px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        @media (max-width: 640px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .tier-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                position: relative;
+                padding-bottom: 40px;
+            }
+            
+            .tier-index {
+                position: absolute;
+                top: 8px;
+                right: 12px;
+            }
+            
+            .tier-field:nth-child(2) { grid-column: 1; grid-row: 1; }
+            .tier-field:nth-child(3) { grid-column: 2; grid-row: 1; }
+            .tier-field:nth-child(4) { grid-column: 1; grid-row: 2; }
+            .tier-field:nth-child(5) { grid-column: 2; grid-row: 2; }
+            .remove-btn {
+                position: absolute;
+                bottom: 8px;
+                right: 8px;
+            }
+            
+            h1 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>💰 Token 价格换算器</h1>
+        <p class="subtitle">输入百万 Token 价格 → 输出千 Token 价格（支持多梯度）</p>
+        
+        <div class="tier-list" id="tierList">
+            <!-- 动态生成 -->
+        </div>
+        
+        <button class="add-btn" onclick="addTier()">+ 添加梯度</button>
+        
+        <div class="output-section" id="outputSection">
+            <div class="section-header">
+                <span class="section-title">📋 输出结果（元 / 千 Token）</span>
+                <span class="copy-hint">点击复制按钮复制 JSON</span>
+            </div>
+            <div id="resultsArea">
+                <div class="empty-state">添加梯度后自动生成 JSON...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tiers = [];
+        let tierCounter = 0;
+        
+        function addTier(data = null) {
+            tierCounter++;
+            const id = tierCounter;
+            const tier = {
+                id: id,
+                min_tokens: data?.min_tokens ?? (tiers.length === 0 ? 0 : ''),
+                max_tokens: data?.max_tokens ?? 32000,
+                input_price: data?.input_price ?? '',
+                output_price: data?.output_price ?? ''
+            };
+            tiers.push(tier);
+            render();
+        }
+        
+        function removeTier(id) {
+            tiers = tiers.filter(t => t.id !== id);
+            render();
+        }
+        
+        function updateTier(id, field, value) {
+            const tier = tiers.find(t => t.id === id);
+            if (tier) {
+                tier[field] = value;
+            }
+            generate();
+        }
+        
+        function render() {
+            const list = document.getElementById('tierList');
+            if (tiers.length === 0) {
+                list.innerHTML = '';
+                generate();
+                return;
+            }
+            
+            list.innerHTML = tiers.map((tier, index) => `
+                <div class="tier-row">
+                    <div class="tier-index">#${index + 1}</div>
+                    <div class="tier-field">
+                        <label>Min Tokens</label>
+                        <input 
+                            type="number" 
+                            value="${tier.min_tokens}" 
+                            oninput="updateTier(${tier.id}, 'min_tokens', this.value)"
+                            placeholder="0"
+                        >
+                    </div>
+                    <div class="tier-field">
+                        <label>Max Tokens</label>
+                        <input 
+                            type="number" 
+                            value="${tier.max_tokens}" 
+                            oninput="updateTier(${tier.id}, 'max_tokens', this.value)"
+                            placeholder="32000"
+                        >
+                    </div>
+                    <div class="tier-field">
+                        <label>Input <span class="hint">元/百万</span></label>
+                        <input 
+                            type="number" 
+                            step="any"
+                            value="${tier.input_price}" 
+                            oninput="updateTier(${tier.id}, 'input_price', this.value)"
+                            placeholder="0.5"
+                        >
+                    </div>
+                    <div class="tier-field">
+                        <label>Output <span class="hint">元/百万</span></label>
+                        <input 
+                            type="number" 
+                            step="any"
+                            value="${tier.output_price}" 
+                            oninput="updateTier(${tier.id}, 'output_price', this.value)"
+                            placeholder="1.5"
+                        >
+                    </div>
+                    <button class="remove-btn" onclick="removeTier(${tier.id})" title="删除">×</button>
+                </div>
+            `).join('');
+            
+            generate();
+        }
+        
+        function formatPrice(num) {
+            if (num === 0 || num === '0') return '0';
+            if (!num || isNaN(num)) return '0';
+            const n = parseFloat(num);
+            const str = (n / 1000).toFixed(10);
+            return str.replace(/\.?0+$/, '');
+        }
+        
+        function generate() {
+            const resultsArea = document.getElementById('resultsArea');
+            
+            const validTiers = tiers.filter(t => 
+                t.input_price !== '' || t.output_price !== ''
+            );
+            
+            if (validTiers.length === 0) {
+                resultsArea.innerHTML = '<div class="empty-state">添加梯度并输入价格后自动生成 JSON...</div>';
+                return;
+            }
+            
+            const results = validTiers.map(t => {
+                const min = parseInt(t.min_tokens) || 0;
+                const max = parseInt(t.max_tokens) || 0;
+                const inPrice = parseFloat(t.input_price) || 0;
+                const outPrice = parseFloat(t.output_price) || 0;
+                
+                return {
+                    min_tokens: min,
+                    max_tokens: max,
+                    input_cost: inPrice / 1000,
+                    output_cost: outPrice / 1000
+                };
+            });
+            
+            // 手动构建 JSON 字符串，避免科学计数法
+            const lines = results.map(r => {
+                return `    {\n        "min_tokens": ${r.min_tokens},\n        "max_tokens": ${r.max_tokens},\n        "input_cost": ${formatPrice(r.input_cost * 1000)},\n        "output_cost": ${formatPrice(r.output_cost * 1000)}\n    }`;
+            });
+            
+            const rawJSON = `[\n${lines.join(',\n')}\n]`;
+            
+            resultsArea.innerHTML = `
+                <div class="code-block">
+                    <button class="copy-btn" onclick="copyJSON(this)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        复制
+                    </button>
+                    <pre>${highlightJSON(rawJSON)}</pre>
+                </div>
+            `;
+            
+            const btn = resultsArea.querySelector('.copy-btn');
+            btn.dataset.json = rawJSON;
+        }
+        
+        function highlightJSON(jsonStr) {
+            return jsonStr
+                .replace(/"([^"]+)":/g, '<span class="key">"$1"</span><span class="punctuation">:</span>')
+                .replace(/: "([^"]*)"/g, ': <span class="string">"$1"</span>')
+                .replace(/: (\d+\.?\d*)/g, ': <span class="number">$1</span>')
+                .replace(/([{},\[\]])/g, '<span class="punctuation">$1</span>');
+        }
+        
+        function copyJSON(btn) {
+            const json = btn.dataset.json;
+            
+            const doCopy = () => {
+                const originalHTML = btn.innerHTML;
+                btn.classList.add('copied');
+                btn.innerHTML = '✓ 已复制';
+                
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            };
+            
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(json).then(doCopy).catch(() => fallbackCopy());
+            } else {
+                fallbackCopy();
+            }
+            
+            function fallbackCopy() {
+                const textarea = document.createElement('textarea');
+                textarea.value = json;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                doCopy();
+            }
+        }
+        
+        // 初始化：添加一个默认梯度
+        addTier();
+    </script>
+</body>
+</html>
