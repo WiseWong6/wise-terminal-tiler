@@ -19,7 +19,7 @@
       {
         "title": "深度解析三大 Agent 上下文工程：Claude Code、OpenClaw、Hermes 的设计哲学",
         "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896698&idx=1&sn=966f92bb4fa66268fc15cb82cc2a7fb3&chksm=f3b972b3c4cefba57f8b4f1ea8570ba3aa623f6329d9be8a1c2b7c68b4462e085dd8803bfcb3#rd",
-        "summary": "Hermes最近成为了新的热点，除了自我进化机制， 更值得注意的是它在上下文管理上做了不少激进设计，比如更早触发压缩、把摘要做成交接文档。",
+        "summary": "Hermes最近成为了新的热点，除了自我进化机制， 更值得注意的是它在上下文管理上做了不少激进设计，比如更早触发压缩、把摘要做成交接文档。 阐述了Claude Code和Openclaw的Harness机制，能够让AI运行得更加稳定、完善。 在Harness之前，更底层的则是上下文工程，很多时候，模型的幻觉、失忆是因为上下文窗口乱了，",
         "cover": "./assets/articles/ai-product-03.jpeg",
         "date": ""
       },
@@ -104,7 +104,141 @@
   },
   "ai-tools": {
     "label": "AI工具",
-    "articles": []
+    "articles": [
+      {
+        "title": "当 Claude Code 遇上强迫症：AI 的工位终于有救了",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896441&idx=1&sn=5729e04d8f0c82833f8450eb28055919&chksm=f3b975b0c4cefca6672315ff26f48b2624a710aa5089783e6e7592e1c5f7c504ee624cf74f19#rd",
+        "summary": "不知道你会不会和我一样，习惯在一个大屏幕下分屏，左边是终端窗口，右边是浏览器或者聊天窗口。 在等待 AI 实习生帮我们打工的时候，会去处理其他的事情，处理完毕后再会去看终端里 AI 给我们输出的内容，去做规划、做决策。 这样在处理别的事情时，也能够及时看到AI的打工进度，避免耽误AI的时间🐶 但在同时指挥多个AI，或者开启多个任务的时候，电脑桌面会变得特别乱。 查了一圈市场上的产品，都不符合...",
+        "cover": "./assets/articles/ai-tools-01.jpeg",
+        "date": "2026-03-16"
+      },
+      {
+        "title": "谷歌昨晚发布Nano Banana 2：文字能力大幅增强，速度加快，13种玩法，每一种都强到离谱",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896127&idx=1&sn=326041d7d78ad3af006f6b6dacabb1ad&chksm=f3b97476c4cefd60667a8a2088380b1d20660834be6f5e85adcc421de2742c0531d7f5064c8e#rd",
+        "summary": "Nano Banana 2，在昨天晚上终于终于终于来了。 熬夜测试了13种有趣的玩法，现在分享给大家。 话不多说，我们，开始。 INFOGRAPHIC 生成百科全书式垂直长图，讲解nanobanana2对比nanobana、对比nanobanana pro的进化 首先我先问了Gemini 这代的Nanobanana有什么进化，几个版本有什么区别，它告诉我们核心是Pro的质量，Flash的速度...",
+        "cover": "./assets/articles/ai-tools-02.jpeg",
+        "date": "2026-02-27"
+      },
+      {
+        "title": "不会设计也能做轻松科技感PPT？这个的PPT Skills真的太强啦！！！",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896056&idx=1&sn=2a899d747634e155a0b5fb3bdc5cd4d3&chksm=f3b97431c4cefd27a8bd113d1ce9bda74db21a6626e3ff224fcca5f75bd8ff3c642eeecfd833#rd",
+        "summary": "Hi，朋友们，新年快乐。 开年要写年度规划了吗~ 昨天刷Twitter的时候发现了一个宝藏的PPT Skills，可以让大家 告别AI味的套路PPT配色，但是又有超帅的科技感。 以下分别是我用Kimi Code和Claude Code + GLM 5.0用这个Skills输出的效果，左边是Kimi右边是GLM。 用自然语言描述你想要什么，AI就能够帮你把PPT做出来。 你只用关心更重要的每一...",
+        "cover": "./assets/articles/ai-tools-03.jpeg",
+        "date": "2026-02-26"
+      },
+      {
+        "title": "你的经验，可以复制粘贴了：Skills正在引发一场知识资产化革命",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648895239&idx=1&sn=cbd330d498f0852b25011721a2bbb083&chksm=f3b9690ec4cee018401d8830a6d22dbb976424ba5522a2e768051477c4beb3da76ee0086f414#rd",
+        "summary": "最近我发现我陷入了奇怪了循环，在AI时代本来应该让工作变得更高效，但同样流程格式的数据分析，用研报告，每次都要从头开始。 我还是要每次告诉它，这里的数据要用饼图，那个报告的内容要去做真实性验证。 一来一回5分钟过去了。 我在用最先进的人工智能，却做着最原始的重复劳动。 这样的重复，100次也不会让你的成长会变多一点。 直到我发现了Skills。 其实，AI最大的问题不是它不够聪明，而是它记不...",
+        "cover": "./assets/articles/ai-tools-05.jpeg",
+        "date": "2026-01-24"
+      },
+      {
+        "title": "开发了2个Skiils，用AI编程的方式写提示词，终于可以早点下班啦～",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894979&idx=1&sn=38f7f26674bf543c45db050cbd5e40af&chksm=f3b9680ac4cee11c18d491e86441560cd7225c9094c9037b16c89da84c62526fd015e259aeab#rd",
+        "summary": "实在是被逼的没路走了。 作为一个重度 AI使用者和AI产品经理，我大概每周要修改几十上百次提示词。 以前我以为提示词最大的难点是写出来，需要思考提示词要具备什么能力，要用什么框架，要赋予AI什么技巧。 改提示词比写要痛苦10倍。 每次在GPT和Gemini的对话框里改提示词，感觉和赌博没区别。不知不觉提示词就被改得面目全非。 最可怕的不是改得不够好，而是改得看起来没啥问题。 我说：“把第三段...",
+        "cover": "./assets/articles/ai-tools-06.jpeg",
+        "date": "2026-01-12"
+      },
+      {
+        "title": "ChatGPT/Deepseek年度个人报告攻略，让AI总结你的这一年。",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894756&idx=1&sn=621b70cc7f11f723fce9bb24d8500052&chksm=f3b96b2dc4cee23b833c90e17c5d665013e5227e5954c713ef09f49f89be6edea2fcdd45646b#rd",
+        "summary": "疯狂调试N个版本，终于魔改成功了我的ChatGPT年度总结。 我把2025年和GPT对话的数据都给了Gemini，原来我有过1730次发问，经历了3500条信息，输入了240万字。 在11月份时我处在职业的分岔路，和它对话了很久，它说的真好： 十一月的风最大，因为你想去的地方最远。 凌晨5点15分，是我和GPT最晚的对话记录，大概率是失眠了，然后在调提示词。 希望调试的真的是未来，也真的 在...",
+        "cover": "./assets/articles/ai-tools-07.jpeg",
+        "date": "2025-12-29"
+      },
+      {
+        "title": "年度复盘神器，AI一键直出高级感排版卡片+PPT",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894699&idx=1&sn=a85b0aa0bd5fe15b2f9a7870deeafb21&chksm=f3b96ae2c4cee3f4f88a67468265a3a950010aca217753e8cb01f91734f9894f8bd118c41745#rd",
+        "summary": "最近刚写完年终复盘，但到了分享的时候我觉得文字还是太多了，读起来特别累。 在@AI启蒙小伙伴 老师提示词的基础上，疯狂调试了4天，我终于解决了这个大麻烦。 如果你需要做年终复盘、读书笔记、播客摘录或者长文总结，但又不想花时间做排版，这套一键生成高级感PPT的提示词非常适合你。 除了复盘，还有卡片模式，这个提示词也能够很好的帮助朋友们快速阅读。 这是我用十字路口的播客逐字稿生成的卡片，除了克莱...",
+        "cover": "./assets/articles/ai-tools-08.jpeg",
+        "date": "2025-12-24"
+      },
+      {
+        "title": "多维表格 x 即梦4.0 ：AI壁纸副业极简攻略",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894495&idx=1&sn=80341d12398d2a12bda16d4b661fdadf&chksm=f3b96a16c4cee3006fe9f32baf2af4fdd527f381f35d3ac8085c14315eb756a7d53b77c4e355#rd",
+        "summary": "月入5k？AI壁纸可能是最懒的副业。 没花一分钱，没有复杂的提示词，也不用懂摄影和PS，从想法到成图，每次只要1分钟。 前几天想换壁纸，但苹果电脑的壁纸生态非常的弱，没办法直接在steam买壁纸应用，Appstore的壁纸应用也很少。 要么花很长时间大海捞针，要么就去小红书上花钱买，一套6到10块。。 但我换壁纸的频率太高了，长期付费也不现实。 而无论是应用还是小红书，付费买的壁纸AI痕迹很...",
+        "cover": "./assets/articles/ai-tools-09.jpeg",
+        "date": "2025-10-12"
+      },
+      {
+        "title": "不是哥们，一句话也能做PPT啊....",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894455&idx=1&sn=50e1a7c89bf7af1e656a9a5a20ee9a33&chksm=f3b96dfec4cee4e89d8939312aba85024666d69b500723835120b298947d11298ca55118f7a6#rd",
+        "summary": "前几天参考 @摸鱼的小李 老师的PPT提示词，迭代了 一次性生成、PDF下载以及图形绘制能 试图用这个提示词解决我的PPT噩梦，但输出还不是特别稳定。 又再花了3天调整提示词结构，增加了分类型规划内容的能力，好消息是这样的输出终于比较稳定了，元宝的R1也能跑出来 坏消息是，最后的5分钟研究了一个新玩法，……&amp;*￥#^, 一句话还真的能做PPT啊。 你是一名专业的PPT设计师，请基于文...",
+        "cover": "./assets/articles/ai-tools-10.jpeg",
+        "date": "2025-09-28"
+      },
+      {
+        "title": "打工人PPT自救，用提示词让AI 黑奴帮你打工",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894440&idx=1&sn=3a44a614e015adbb917306d0da906e28&chksm=f3b96de1c4cee4f700e14782af3834456b2701e939c9922203e4dd30ecc31f31f6f4e00c6b45#rd",
+        "summary": "作为打工人，PPT是一直逃不脱的噩梦，而更可怕的噩梦是又快又好看，但再厌恶paperwork，为了生存也得上。 传统方法耗时耗力，本来以为AI是个救星，但测试了几款发现大多都是一波流，要自己改或者有限度的改，文字的堆砌感也非常重，要变好就要我加钱了🐶。 于是，我决定，自己折腾！以下是肝了3天的成效（优雅。 我把段永平的50条语录发给了AI，让它们帮我做PPT Kimi做的，坦白说视觉表现上，...",
+        "cover": "./assets/articles/ai-tools-11.jpeg",
+        "date": "2025-09-24"
+      },
+      {
+        "title": "AI阅读系统 | 和阅读焦虑说byebye（二合一纯享版）",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894354&idx=1&sn=2e33d18de1d2a58968e0d79cbd2444aa&chksm=f3b96d9bc4cee48d4173d834abd4c9cdb1d927deb47fe40b7fc103efbe75648349782403a8ab#rd",
+        "summary": "在AI自媒体上迈出了小小的一步，WayToAGI和飞行社都收录啦~值得开心，也分享一下整合的全文。 提示词做卡片已经不新鲜了，然后最近思考了下能不能在提示词的基础上往前走一步，于是用飞书多维表格制作了一个AI文章阅读系统。 提示词参考了云舒老师的思路，进行了简化，优化一下性能，并且用于适配飞书场景。 最核心的问题其实就是，文章收藏了懒得看。 1、输入链接，输出卡片 省去了复制内容给AI的环节...",
+        "cover": "./assets/articles/ai-tools-12.jpeg",
+        "date": "2025-09-17"
+      },
+      {
+        "title": "AI速读神器上线，和阅读焦虑说byebye（附工作流+提示词）",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894245&idx=1&sn=2a97944290cbbb736d796a9c16123d5f&chksm=f3b96d2cc4cee43aebb97d07a6bf2dad2edd2c437280c7eef2fe65d4e0fac3d53e37b2ca230e#rd",
+        "summary": "上一篇文章分享的阅读管理系统，有很多朋友去使用了。 但很快有朋友反馈，手动复制内容还是很麻烦，尤其在手机上。其次卡片的信息还是比较少，看完害得纠结值不值得读。 输入链接直出张高质量的速读卡片。 2.0版本解放双手，卡片知识密度翻倍，阅读焦虑瞬间清零。 用同一篇文章来对比一下差异。 简单文字拼接，就像速览笔记。 2）横版：信息密度提升，重点一目了然 3）竖版：彻底解决速读问题 竖版手机友好，而...",
+        "cover": "./assets/articles/ai-tools-13.jpeg",
+        "date": "2025-09-15"
+      },
+      {
+        "title": "收藏夹是知识的坟场？用AI轻松治愈阅读焦虑",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894222&idx=1&sn=5f0bf28e979fd170bb1db41b9ab81eae&chksm=f3b96d07c4cee411fd59df16ce19d6a3d9de150276c0618b60f2ab3ceaa96995aa7b30d6c9b2#rd",
+        "summary": "看到一篇好的文章，下意识点个收藏想着晚点再看，然后它就和上千个链接一起，被埋进名为“收藏”的坟墓里。 那种“假装学习”的满足感，转眼就变成了无尽的阅读焦虑。 每次打开几百篇的收藏夹，总是一脸茫然：当时为啥要收藏，讲的是什么，信息会不会过期了。 直到最近用Deepseek、Kimi，还有飞书多维表格，给自己搭建了一套阅读管理系统。 1）1分钟生成速读卡片 把内容和链接丢进去，Kimi会立刻提炼...",
+        "cover": "./assets/articles/ai-tools-14.jpeg",
+        "date": "2025-09-14"
+      },
+      {
+        "title": "整理了600份大佬的演讲和访谈，站在巨人的肩膀上思考。",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894188&idx=1&sn=07767c0fdfbed82b9861b630e3604f64&chksm=f3b96ce5c4cee5f3f24d926663d3dfd0283f2c667bd794d891806585f617388ce39669e58059#rd",
+        "summary": "花了 1小时，复刻出了巨头强化版的“自己”。 他不仅能够回答问题，还继承了600+份马斯克、乔布斯、王兴等巨头的演讲、访谈的理念，融合了我自己知识积累，让我站在巨人的肩膀上思考。 现在我们想问一个问题，第一反应是问AI。 但AI的回答容易泛泛而谈，打开联网搜索， 数据源存在大量噪声，重复、二次加工、低质量的知识远多于高质量的知识，而如果不打开联网搜索，知识可能滞后。 更关键的是它不知道我读过...",
+        "cover": "./assets/articles/ai-tools-15.jpeg",
+        "date": "2025-09-07"
+      },
+      {
+        "title": "用NANO BANANA把小猫的照片做成手办吧！",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894176&idx=1&sn=4a4217d39b8baec6eead230c4e532b61&chksm=f3b96ce9c4cee5ffd8391ea2cb8accf67351d4e37f956f2743bf1ee81de6d96f9cc22fdb696c#rd",
+        "summary": "花了5分钟，我用GPT+NANO BANANA给自己的小猫做了几个手办，效果真的非常惊喜。 手绘、表情包、高糊的照片，都能够立体化还原成小模型。 它能够自动补全缺失的肢体细节，还恰好的猜中了我家小猫是小胖子。 清晰度部分提升明显，体态也会做优化微调，这里我最满意是我小猫鼻子的痣也能够被很好的还原，目前大部分的AI生图都很难找到这个细节。 而表情包，也能够很轻松的变成立体的画面，调整姿态。但如...",
+        "cover": "./assets/articles/ai-tools-16.jpeg",
+        "date": "2025-09-01"
+      },
+      {
+        "title": "置身事外一年，不如置身事内一个月。",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894143&idx=1&sn=5538bdc38422a20a2d73b45b55c39779&chksm=f3b96cb6c4cee5a0bd94c03b6f3c405729fc07f19f0bfbef49d0eef6d9a6bea6c12f4523946d#rd",
+        "summary": "在去年7月的时候，我就在思考一个问题，怎么样补充企业的销售能力。 它的工序要足够简单，不然我做不出来。它也不能太简单，不然我抢不过别人。 它的盈利模式要足够直接，不能赔本赚吆喝。 它未来要能够标准化，不然我开不了连锁店。它还要有延展性，具备可持续的发展空间。 这个方向，在一开始就被我否定了， 周期长，就无法敏捷试错。成本高，失败的代价就越沉重。但最大的理由是：千行百业，我不知道要选哪个方向，...",
+        "cover": "./assets/articles/ai-tools-17.jpeg",
+        "date": "2025-08-22"
+      },
+      {
+        "title": "0代码超简单，用Coze打造你的社群日报工具",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894036&idx=1&sn=8b1ced22dbfc22970ac25a7c9c898933&chksm=f3b96c5dc4cee54b18474c8e5490a65c402525364f2b2797a7edec4a9bd761863598618f5302#rd",
+        "summary": "AI编程是很好的实现个人想法的工具，但在落地的时候我们应该评估其实现方案。如果你的流程并不复杂，也没有什么算法流程对接复杂API的时候，个人建议还是使用Coze。 扣子是字节的无代码应用开发平台，在工作流场景核心提供2大能力： 如果你不需要界面，也不需要变成一个AI会话应用，那其实只要建立工作流就可以使用了。 今天要给大家分享的是怎么样 使用扣子打造社群日报的工具 ，学习了基础的用法，我们也...",
+        "cover": "./assets/articles/ai-tools-18.jpeg",
+        "date": "2024-06-12"
+      },
+      {
+        "title": "你能用嘴来画一幅画吗？GPT-4o：我可以！",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648893815&idx=1&sn=72efffaeb37c831f7a959a540e7c12cf&chksm=f3b96f7ec4cee66895b6528d1a60a8a250186ff6f94ef95705b18dfcc470c33da0ded4f25fa0#rd",
+        "summary": "在去年7月份我才开始正儿八经拥抱AI，大概也算赶上了AI的晚班车，最早开始玩的是文本生成，然后是图片、视频、编程。 我尝试过用AI来画儿童绘本，但生成的效果总是差强人意，对中文的适配也不友好，而liblib又过于复杂，所以搁置了。 前几天OpenAI上线的GPT-4o生图功能，今天充了个钱实测了一下，充钱果然能变强。这一切都不一样了， 我不再需要翻译、垫图也不再需要复杂的工作流，它也不再那么...",
+        "cover": "./assets/articles/ai-tools-19.jpeg",
+        "date": "2025-03-28"
+      },
+      {
+        "title": "每天换一张AI画的壁纸，皮卡丘真可爱啊。",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648893736&idx=1&sn=cf80bdaebbd6d493539685404654fe05&chksm=f3b96f21c4cee6370bb396d84f4e33f94c41c6302d48c584c5cf4e016f40237def0d69aabfde#rd",
+        "summary": "最近看了篇文章说现在很多小红书的达人其实是AI画出来的，然后批量做矩阵。其次很多人也在用AI绘画做简单的头像、壁纸售卖。 虽然还没有想好要做什么赛道，但也许播下足够多的种子就能够开花。 作为一直画画很差劲的同学，也想着能够比较熟练的掌握这门技巧，于是开始实操研究AI到底能够帮我画什么。 测试的5-6个工具里面，比较好用的还是MJ、Liblib。MJ的操作更加简单，Liblib则更加专业，但目...",
+        "cover": "./assets/articles/ai-tools-20.jpeg",
+        "date": "2024-10-23"
+      }
+    ]
   },
   "ai-coding": {
     "label": "AI编程",
