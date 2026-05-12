@@ -183,6 +183,14 @@ function SidebarShell({
           >
             小红书
           </a>
+          <a
+            href="https://www.douyin.com/user/MS4wLjABAAAAH9nnezGOIpAhJpVqxT-h6oqeL6IQduXj54YnE7vCi5Hm0UgUd8fvo8DdKAwbHOb5"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block text-warm-600 transition hover:text-warm-900"
+          >
+            抖音
+          </a>
         </div>
       </div>
     </aside>
