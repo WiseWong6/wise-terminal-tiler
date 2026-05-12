@@ -1,0 +1,121 @@
+const ARTICLES_DATA = {
+  "ai-product": {
+    "label": "AI产品",
+    "articles": [
+      {
+        "title": "Deepseek V4 技术报告解读：百万 token、1/9 的价格，AI 进入平权时代",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896787&idx=1&sn=6b8fd6cbbd99eefa935ff005c19be9a8&chksm=f3b9731ac4cefa0c161ccc7442edca12e10e67b81583911fbe9f5778d9aad7141f78fbaae361#rd",
+        "summary": "2026年4月24日，DeepSeek V4 发布了。 它在高难数学、编程竞赛以及编程真实问题验证集中超出了gpt 5.4 xHigh、Claude Opus-4.6Max ，但在专家级知识和推理、终端任务、工具使用能力中落后。",
+        "cover": "./assets/articles/ai-product-01.jpeg",
+        "date": "2026-04-24"
+      },
+      {
+        "title": "万字笔记 | 重听Manus创始人肖宏访谈：世界不是线性外推，做博弈中的重要变量",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896762&idx=1&sn=7c38175c879d7f3cae3fe0886a20a018&chksm=f3b972f3c4cefbe5cda87fbfa6fcc6f24f91783a567d4cce16acd098bb5682428d957e9cd6d9#rd",
+        "summary": "对Manus创始人肖弘的3小时访谈：世界不是线性外推，做博弈中的重要变量，去除部分口语化的语言后进行排序、分类、提炼。 小宇宙：张小珺·商业访谈录 之前的产品做的功能足够用户使用了，大家用的也挺爽的。竞争对手也不卷，还活着的其他的竞争对手也各自安好。",
+        "cover": "./assets/articles/ai-product-02.jpeg",
+        "date": ""
+      },
+      {
+        "title": "深度解析三大 Agent 上下文工程：Claude Code、OpenClaw、Hermes 的设计哲学",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896698&idx=1&sn=966f92bb4fa66268fc15cb82cc2a7fb3&chksm=f3b972b3c4cefba57f8b4f1ea8570ba3aa623f6329d9be8a1c2b7c68b4462e085dd8803bfcb3#rd",
+        "summary": "Hermes最近成为了新的热点，除了自我进化机制， 更值得注意的是它在上下文管理上做了不少激进设计，比如更早触发压缩、把摘要做成交接文档。",
+        "cover": "./assets/articles/ai-product-03.jpeg",
+        "date": ""
+      },
+      {
+        "title": "为什么你的Openclaw龙虾总是智障，ClaudeCode源码泄露揭露：Agent 的差距不在模型，在 Harness Engineering",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896646&idx=1&sn=911038b1f648dc97d0a821c557a50151&chksm=f3b9728fc4cefb990b8b309230d1d830e639a5957ecfb7ae4c636e7ce307b396efcf443f7dbf#rd",
+        "summary": "前阵子龙虾大热，但很多朋友都不太能用得很顺畅。 它总会有莫名其妙的中断，接收到了指令没有执行完成，遇到的错误莫名其妙就停下来了，也没有任何反馈。有的时候昨天能正常看的邮箱，总结的邮件，但今天就失败了，就算有skill也不稳定。 原因可能是模型限流了，模型思考死循环了，又或者忘记自己在做什么事情了。",
+        "cover": "./assets/articles/ai-product-04.jpeg",
+        "date": ""
+      },
+      {
+        "title": "深度思考，不是 AI 变强的核心竞争力。读Kimi论文注意力残差及林俊旸长文笔记",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896622&idx=1&sn=bc47ff6e4dd63614837f4b2322905eea&chksm=f3b97267c4cefb7135db21730bb74b3437333389fdbe9330050f5848b2f54111161094994b4c#rd",
+        "summary": "最近特别的忙碌，直到这个周末才有时间阅读 Kimi 的新论文《注意力残差 Attention Residuals》还有林俊旸老师的《从推理式思考转向智能体式思考 From \"Reasoning\" Thinking to \"Agentic\" Thinking》。 前者在调整了模型的信息传递机制，让同样的算力训练出更好的效果；后者讨论的是训练目标：让 AI 不仅仅是停留在思考、跑分这些闭卷考试里...",
+        "cover": "./assets/articles/ai-product-05.jpeg",
+        "date": ""
+      },
+      {
+        "title": "提示词是工程，不是写作：4个方法快速提升提示词质量",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896600&idx=1&sn=fd3746c719f9efcc8adb7bea2078a960&chksm=f3b97251c4cefb4759b2934de70352e4a33b5850136a81ea243cb84abca8e5755691e640d862#rd",
+        "summary": "最近又开始折腾提示词了。 复杂的逻辑依靠AI来判别， 如果不开深度思考，那就太慢了，用户等十几秒才能看到结果。",
+        "cover": "./assets/articles/ai-product-06.jpeg",
+        "date": ""
+      },
+      {
+        "title": "Openclaw平民龙虾使用安装指南",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648896579&idx=1&sn=fb9278efca1f888ea2f0e5033439f439&chksm=f3b9724ac4cefb5ceeff0e8e5afbfe2245e8b458af2744811c5aa5076f64b41d3e3b7782490d#rd",
+        "summary": "基于上周两场 Openclaw 的培训分享输出本期内容，核心是场景，最简单的生图也尽可能代入业务视角。希望能帮助你了解龙虾是什么，又能做些什么，以及相对友好的安装方式，也有好用、有用的平民Skills推荐，在线版和PDF在文末。 Knowledge Planet 信息爆炸的高效解法，不烧钱了解实用工具。",
+        "cover": "./assets/articles/ai-product-07.jpeg",
+        "date": ""
+      },
+      {
+        "title": "ChatGPT开始卖广告了：你的每一次对话，都在成为商品",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648895750&idx=1&sn=cfc36eb59de07d9769128d4a757dcdf4&chksm=f3b9770fc4cefe19883443d2ce05811f2765679a9bd793496bf316da8cf2c2887835c8353e0a#rd",
+        "summary": "点击星标，及时收看更多AI实战 你和AI说的每一句话，值多少钱？ 2026年2月9日，OpenAI 给了这个问题一个答案：20万美元。",
+        "cover": "./assets/articles/ai-product-08.jpeg",
+        "date": "2026-02-09"
+      },
+      {
+        "title": "Openclaw（Clawbot）+Kimi K 2.5 部署+飞书使用手把手教程：让AI接管所有，24小时不停机",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648895508&idx=1&sn=55bf820399c759a37839cf5319e834f9&chksm=f3b9761dc4ceff0b66dd1e6b8cf81819238207fb2c704798381392e355d095d978f066b091f2#rd",
+        "summary": "最近有很多朋友问我，为什么我的Token消耗量那么大，其实答案只有一个，我把编程CLI代替了所有的事。 无论是调研、规划、编程、数据分析、生图或者创作，它不是我们想象中的只是一个编程工具。",
+        "cover": "./assets/articles/ai-product-09.jpeg",
+        "date": ""
+      },
+      {
+        "title": "开年AI对谈Tim：怕什么真理无穷，进一步有进一步的欢喜",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648895183&idx=1&sn=5247236d604a24210388531f896dc3b4&chksm=f3b968c6c4cee1d0ac5a1843923532b0ac2517f42e499dff5aa4e2498b773217d54f32d931cd#rd",
+        "summary": "一些吃饭时候的AI乱翻书 来自Tim的提问，Wise的回答",
+        "cover": "./assets/articles/ai-product-10.jpeg",
+        "date": ""
+      },
+      {
+        "title": "Claude团队Anthropic最新博客：AI Agent产品评估测试体系完整指南",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648895146&idx=1&sn=bc75af8d46139b153de7a8e179f85565&chksm=f3b968a3c4cee1b57b56a4b6d14eef615d379b0f0abd40f842154f4645d6102d50db191d2208#rd",
+        "summary": "担任 AI 产品经理以后，我最大的痛苦，不是把东西做出来，而是把它做好。 现在做一个60分的Agent真的越来越容易了，扣子、Dify的可视化编排，或者更轻量的知识库产品，把文件丢进去，最简单的Agent就做出来了。",
+        "cover": "./assets/articles/ai-product-11.jpeg",
+        "date": ""
+      },
+      {
+        "title": "同样是大模型，To C和To B 正在走向两个世界，看了唐杰、杨植麟、姚顺雨、林俊旸同台分享有感。",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894949&idx=1&sn=daf39771058ba7b8eacac86e453bfd10&chksm=f3b96becc4cee2fa624d1bf64dab87da2714700680cb1b9b273c428ace316079cb01ca1c8217#rd",
+        "summary": "唐杰、杨植麟、姚顺雨、林俊旸罕见同台分享，这3个小时的信息密度实在太高了。 同样是大模型，有的人觉得今年和去年差不多，有的人却已经用它把工作方式翻了个面。差别不只在模型本身，更在你站在哪个场景里。 看完分享，最强烈的反差感来自顺雨老师的一句话：",
+        "cover": "./assets/articles/ai-product-12.jpeg",
+        "date": ""
+      },
+      {
+        "title": "AI产品经理的护城河，是“工程化思维”",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894914&idx=1&sn=4212e46ba0e491c59a31cdb33eca32ee&chksm=f3b96bcbc4cee2dd8409635d32d73db9cc1cd8c1b1a2ab3d0740bb2fd0cff8dd0332a13b340a#rd",
+        "summary": "在没有下场做AI产品之前，我很天真的以为写好Prompt就能够做出一个好的AI。但当落地时才发现： 会用AI和做AI产品之间，有一堵厚厚的墙。",
+        "cover": "./assets/articles/ai-product-13.png",
+        "date": ""
+      },
+      {
+        "title": "31岁的职业校准：重修AI产品学分",
+        "url": "http://mp.weixin.qq.com/s?__biz=MzI4MTA0NzkxMA==&mid=2648894630&idx=1&sn=3e10f669f497aa9f5bceeb9c1bac48e1&chksm=f3b96aafc4cee3b982f3f7e3cea56c23c0bce8299e537d8fc45d3be79ba9ef8b7ff698bbe3c8#rd",
+        "summary": "2025年末，我离开了创业两年半的公司，准备从零到一做一名AI产品经理。 我之前一直相信着：“走过的路，每一步都算数。”但看着这5年的经历：没有代表作、没有垂直的积累，走的每一步都是弯路。",
+        "cover": "./assets/articles/ai-product-14.jpeg",
+        "date": ""
+      }
+    ]
+  },
+  "ai-tools": {
+    "label": "AI工具",
+    "articles": []
+  },
+  "ai-coding": {
+    "label": "AI编程",
+    "articles": []
+  },
+  "ai-model": {
+    "label": "AI模型",
+    "articles": []
+  },
+  "product-general": {
+    "label": "产品通识",
+    "articles": []
+  }
+};

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Article — Wise</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="themes.css">
+  <style>
+    .navbar-logo svg, svg.navbar-logo, .navbar-logo {
+      height: 22px; min-height: 22px; min-width: 22px; width: 22px;
+      display: inline-block; vertical-align: middle;
+    }
+    .sidebar-section svg, .sidebar-section .sidebar-links svg, .sidebar-section .sidebar-nav-links svg {
+      height: 16px; width: 16px; flex-shrink: 0; display: inline-block;
+    }
+    .navbar-menu svg, .navbar-menu.nav-items svg {
+      height: 16px; width: 16px; display: inline-block;
+    }
+    .button svg, a.button svg {
+      height: 20px; min-height: 20px; min-width: 20px; width: 20px;
+      flex-shrink: 0; display: inline-block; margin-right: 0.25rem;
+    }
+    .heading-icon svg {
+      height: 24px; width: 24px; display: inline-block;
+    }
+    .sidebar-nav-links a { align-items: center; display: flex; gap: 0.5rem; }
+    .article-list { display:flex; flex-direction:column; gap:1.5rem; margin-top:1.5rem; }
+    .article-card { display:flex; border:0.25px solid var(--color-border); border-radius:var(--border-radius); background:var(--color-background-card); overflow:hidden; text-decoration:none !important; color:inherit; transition:all 0.15s; }
+    .article-card:hover { border-color:var(--color-primary); transform:translateY(-2px); }
+    .article-cover { width:260px; flex-shrink:0; aspect-ratio:21/9; height:auto; align-self:center; }
+    .article-body { padding:1rem; flex:1; display:flex; flex-direction:column; justify-content:center; }
+    .article-body h3 { margin:0 0 0.5rem; font-size:1.1rem; color:var(--color-text); }
+    .article-body p { margin:0 0 0.75rem; font-size:0.9rem; color:var(--color-text-muted); line-height:1.5; }
+    .article-body time { font-size:0.8rem; color:var(--color-text-muted); }
+    @media screen and (max-width: 640px) {
+      .article-card { flex-direction:column; }
+      .article-cover { width:100%; aspect-ratio:21/9; }
+    }
+    #back-to-top {
+      position: fixed; right: 1.5rem; bottom: 1.5rem;
+      padding: 0.6rem; border-radius: var(--border-radius);
+      border:0.25px solid var(--color-border);
+      background: var(--color-background-card);
+      color: var(--color-text);
+      cursor: pointer; z-index: 100;
+    }
+    .sidebar-collapse-btn {
+      display: none; background: transparent; border: none;
+      color: var(--color-text-muted); cursor: pointer; padding: 0.3rem;
+      border-radius: var(--border-radius); align-items: center; justify-content: center;
+    }
+    .sidebar-collapse-btn:hover {
+      background: var(--color-background-navbar-link-hover);
+      color: var(--color-text-emphasized);
+    }
+    @media screen and (min-width: 1020px) {
+      .sidebar-collapse-btn { display: flex; }
+      .layout { transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+      .sidebar { transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+      .layout.sidebar-collapsed { grid-template-columns: 52px 1fr; }
+      .layout.sidebar-collapsed .sidebar { width: 52px; min-width: 52px; overflow: hidden; }
+      .layout.sidebar-collapsed .sidebar .site-name,
+      .layout.sidebar-collapsed .sidebar .sidebar-nav-links a span,
+      .layout.sidebar-collapsed .sidebar .sidebar-links a span,
+      .layout.sidebar-collapsed .sidebar-section h2,
+      .layout.sidebar-collapsed .sidebar .sidebar-links,
+      .layout.sidebar-collapsed .sidebar .navbar-button,
+      .layout.sidebar-collapsed .sidebar .dropdown,
+      .layout.sidebar-collapsed .sidebar .tooltip-container,
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link > a {
+        display: none;
+      }
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link { justify-content: center; padding: 0; }
+      .layout.sidebar-collapsed .sidebar .sidebar-title-link .flex-align-center { flex-direction: column; }
+      .layout.sidebar-collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+      .layout.sidebar-collapsed .sidebar .sidebar-nav-links a { justify-content: center; margin: 0; padding: 0.5rem; font-size: 0; }
+      .layout.sidebar-collapsed .sidebar-section { margin: 1.25rem 0; padding-bottom: 1.5rem; }
+    }
+    .breadcrumb { display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--color-text-muted); margin-bottom:1rem; }
+    .breadcrumb a { color:var(--color-text-muted); text-decoration:none; }
+    .breadcrumb a:hover { color:var(--color-primary); }
+    .category-header { margin-bottom:1.5rem; }
+    .category-header h1 { font-size:var(--h2); margin-bottom:0.5rem; }
+    .category-header p { color:var(--color-text-muted); margin:0; }
+  </style>
+</head>
+<body>
+  <div id="layout" class="layout">
+    <aside class="sidebar">
+      <section class="sidebar-section">
+        <div class="sidebar-title-link">
+          <a class="flex-align-center gap" href="index.html">
+            <span style="font-size:22px;line-height:1;">💾</span>
+            <span class="site-name">Wise</span>
+          </a>
+          <div class="flex-align-center">
+            <div class="tooltip-container">
+              <button class="navbar-button" id="theme-toggle">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2"></path><path d="M12 20v2"></path>
+                  <path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path>
+                  <path d="M2 12h2"></path><path d="M20 12h2"></path>
+                  <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
+                </svg>
+              </button>
+              <div class="tooltip">主题</div>
+            </div>
+            <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" title="收起侧边栏">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m15 18-6-6 6-6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="sidebar-section">
+        <nav class="sidebar-nav-links">
+          <a href="index.html#projects">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Projects
+          </a>
+          <a href="index.html#article">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Article
+          </a>
+          <a href="index.html#prompt">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            Prompt
+          </a>
+          <a href="index.html#skill">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+            Skill
+          </a>
+          <a href="index.html#about">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            About
+          </a>
+        </nav>
+      </section>
+      <section class="sidebar-section">
+        <h2>Stay Connected</h2>
+        <nav class="sidebar-links">
+          <a href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer">X / Twitter</a>
+          <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer">小红书</a>
+        </nav>
+      </section>
+    </aside>
+
+    <header class="navbar">
+      <div class="navbar-title">
+        <div class="navbar-title-content">
+          <a class="navbar-title-link" href="index.html">
+            <span style="font-size:16px;line-height:1;">💾</span>
+            <span class="site-name">Wise</span>
+          </a>
+        </div>
+      </div>
+      <div class="navbar-container">
+        <section class="navbar-section navbar-section-search">
+          <form>
+            <div class="search-container with-button">
+              <input id="search" type="search" class="searchbar" placeholder="搜索..." autoComplete="off" value=""/>
+              <button type="submit" class="transparent-button" disabled="">搜索</button>
+            </div>
+          </form>
+        </section>
+        <section class="navbar-section">
+          <button class="navbar-button" id="sidebar-toggle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="3" x2="9" y2="21"></line>
+            </svg>
+          </button>
+          <button class="navbar-button nav-menu-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12h18"></path><path d="M3 18h18"></path><path d="M3 6h18"></path>
+            </svg>
+          </button>
+          <nav class="navbar-menu nav-items">
+            <a href="index.html#projects">Projects</a>
+            <a href="index.html#article">Article</a>
+            <a href="index.html#prompt">Prompt</a>
+            <a href="index.html#skill">Skill</a>
+            <a href="index.html#about">About</a>
+          </nav>
+        </section>
+      </div>
+    </header>
+
+    <main class="main-content page">
+      <div class="breadcrumb">
+        <a href="index.html">Home</a>
+        <span>/</span>
+        <a href="index.html#article">Article</a>
+        <span>/</span>
+        <span id="breadcrumb-cat">分类</span>
+      </div>
+
+      <div class="category-header">
+        <h1 id="category-title">分类文章</h1>
+        <p id="category-count">共 0 篇文章</p>
+      </div>
+
+      <div class="article-list" id="category-list">
+        <div style="padding:2rem;text-align:center;color:var(--color-text-muted);">加载中…</div>
+      </div>
+
+      <div style="margin-top:2rem;">
+        <a class="button secondary" href="index.html#article">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          返回首页
+        </a>
+      </div>
+
+      <button id="back-to-top">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+      </button>
+    </main>
+
+    <footer>
+      <section class="footer-section">
+        <nav class="footer-menu">
+          <a href="https://github.com/WiseWong6" target="_blank" rel="noopener noreferrer" class="footer-link">GitHub</a>
+          <a href="https://x.com/killthewhys" target="_blank" rel="noopener noreferrer" class="footer-link">X / Twitter</a>
+          <a href="https://www.xiaohongshu.com/user/profile/61f3ea4f000000001000db73" target="_blank" rel="noopener noreferrer" class="footer-link">小红书</a>
+        </nav>
+        <nav class="footer-menu-buttons">
+          <a href="https://github.com/WiseWong6/wise-labs" title="Wise Labs" target="_blank" rel="noopener noreferrer" class="button small">Wise Labs</a>
+          <a href="https://github.com/WiseWong6/wise-skills" title="Wise Skills" target="_blank" rel="noopener noreferrer" class="button small">Wise Skills</a>
+        </nav>
+      </section>
+    </footer>
+  </div>
+
+  <script src="./articles-data.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const menuButton = document.querySelector('.nav-menu-button');
+      const navMenu = document.querySelector('.navbar-menu');
+      if (menuButton && navMenu) {
+        menuButton.addEventListener('click', function() { navMenu.classList.toggle('active'); });
+      }
+      const themeToggle = document.getElementById('theme-toggle');
+      if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+          const html = document.documentElement;
+          if (html.classList.contains('is-dark')) { html.classList.remove('is-dark'); html.classList.add('is-light'); localStorage.setItem('theme','light'); }
+          else if (html.classList.contains('is-light')) { html.classList.remove('is-light'); localStorage.removeItem('theme'); }
+          else { html.classList.add('is-dark'); localStorage.setItem('theme','dark'); }
+        });
+      }
+      function toggleSidebar() {
+        document.getElementById('layout').classList.toggle('sidebar-collapsed');
+      }
+      const sidebarToggle = document.getElementById('sidebar-toggle');
+      if (sidebarToggle) sidebarToggle.addEventListener('click', toggleSidebar);
+      const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
+      if (sidebarCollapseBtn) sidebarCollapseBtn.addEventListener('click', toggleSidebar);
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark') document.documentElement.classList.add('is-dark');
+      else if (saved === 'light') document.documentElement.classList.add('is-light');
+
+      const backToTop = document.getElementById('back-to-top');
+      if (backToTop) {
+        function updateBackToTop() {
+          if (window.scrollY > 300) backToTop.classList.add('visible');
+          else backToTop.classList.remove('visible');
+        }
+        updateBackToTop();
+        window.addEventListener('scroll', updateBackToTop);
+        backToTop.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      // 分类详情页渲染
+      function renderCategory() {
+        const params = new URLSearchParams(window.location.search);
+        const cat = params.get('cat') || 'ai-product';
+
+        try {
+          const data = ARTICLES_DATA;
+          const categoryData = data[cat];
+
+          if (!categoryData) {
+            document.getElementById('category-list').innerHTML = `<div style="padding:2rem;text-align:center;color:var(--color-text-muted);">分类不存在</div>`;
+            return;
+          }
+
+          document.getElementById('breadcrumb-cat').textContent = categoryData.label;
+          document.getElementById('category-title').textContent = categoryData.label;
+          document.getElementById('category-count').textContent = `共 ${categoryData.articles.length} 篇文章`;
+
+          let html = '';
+          categoryData.articles.forEach(art => {
+            const coverHtml = art.cover
+              ? `<img class="article-cover" src="${art.cover}" alt="${art.title}" loading="lazy">`
+              : `<div class="article-cover" style="background:var(--color-background-alternate);"></div>`;
+            html += `
+              <a href="${art.url}" target="_blank" rel="noreferrer" class="article-card">
+                ${coverHtml}
+                <div class="article-body">
+                  <h3>${art.title}</h3>
+                  <p>${art.summary || ''}</p>
+                  <time>${art.date || ''}</time>
+                </div>
+              </a>
+            `;
+          });
+
+          if (categoryData.articles.length === 0) {
+            html = `<div style="padding:2rem;text-align:center;color:var(--color-text-muted);">暂无文章，敬请期待…</div>`;
+          }
+
+          document.getElementById('category-list').innerHTML = html;
+        } catch (err) {
+          console.error('加载文章失败:', err);
+          document.getElementById('category-list').innerHTML = `<div style="padding:2rem;text-align:center;color:var(--color-text-muted);">加载失败，请刷新重试</div>`;
+        }
+      }
+      renderCategory();
+    });
+  </script>
+</body>
+</html>
