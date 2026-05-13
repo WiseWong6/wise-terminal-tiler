@@ -1,0 +1,116 @@
+import React, { useEffect } from 'react';
+import { X, Coffee, Newspaper } from 'lucide-react';
+
+interface AboutModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-white px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-900">关于 Mixed Preview</h2>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-5 space-y-6">
+          {/* 解决的问题 */}
+          <section>
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">
+              解决什么问题
+            </h3>
+            <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
+              <li className="flex gap-2">
+                <span className="text-indigo-600 mt-0.5 shrink-0">•</span>
+                <span>一个编辑器解决 HTML、JSON、Markdown、Mermaid 图渲染问题，再也不用频繁切换</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-indigo-600 mt-0.5 shrink-0">•</span>
+                <span>支持直接复制富文本或图片，解决可视化后复制困扰</span>
+              </li>
+            </ul>
+          </section>
+
+          {/* 怎么用 */}
+          <section>
+            <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">
+              怎么用
+            </h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              把你要渲染的格式复制进来就好了。
+            </p>
+          </section>
+
+          {/* 请我喝咖啡 + 关注我 */}
+          <section className="pt-2 border-t border-slate-200">
+            <div className="grid grid-cols-2 gap-4">
+              {/* 请我喝咖啡 */}
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">
+                  <Coffee size={14} className="text-indigo-600" />
+                  请我喝咖啡
+                </h3>
+                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
+                  <div className="text-center text-slate-400">
+                    <Coffee size={28} className="mx-auto mb-1.5 opacity-50" />
+                    <span className="text-xs">赞赏码配图预留</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 关注我 */}
+              <div>
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">
+                  <Newspaper size={14} className="text-indigo-600" />
+                  关注我
+                </h3>
+                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
+                  <div className="text-center text-slate-400">
+                    <Newspaper size={28} className="mx-auto mb-1.5 opacity-50" />
+                    <span className="text-xs">公众号二维码预留</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-slate-500 text-center mt-5">
+              如果这个工具对你有帮助，可以请 Wise 喝一杯咖啡，你的支持是我持续迭代的动力
+            </p>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-slate-200">
+          <button
+            onClick={onClose}
+            className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+          >
+            知道了
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AboutModal;

@@ -46,7 +46,7 @@ const ZoomControls: React.FC<{
     <button
       onClick={onZoomIn}
       disabled={scale >= 3}
-      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-black"
+      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-800"
       title="放大"
     >
       <ZoomIn size={14} />
@@ -54,14 +54,14 @@ const ZoomControls: React.FC<{
     <button
       onClick={onZoomOut}
       disabled={scale <= 0.5}
-      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-black"
+      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-800"
       title="缩小"
     >
       <ZoomOut size={14} />
     </button>
     <button
       onClick={onReset}
-      className="p-1 rounded hover:bg-slate-100 transition-colors text-black"
+      className="p-1 rounded hover:bg-slate-100 transition-colors text-slate-800"
       title="重置"
     >
       <RotateCcw size={12} />
@@ -69,13 +69,13 @@ const ZoomControls: React.FC<{
     {onFit && (
       <button
         onClick={onFit}
-        className="p-1 rounded hover:bg-slate-100 transition-colors text-black"
+        className="p-1 rounded hover:bg-slate-100 transition-colors text-slate-800"
         title="适配"
       >
         <Maximize2 size={12} />
       </button>
     )}
-    <span className="text-xs text-black font-mono min-w-[36px] text-center">
+    <span className="text-xs text-slate-800 font-mono min-w-[36px] text-center">
       {Math.round(scale * 100)}%
     </span>
   </div>
@@ -2056,7 +2056,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   return (
     <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
       <div
-        className="flex items-center justify-between px-4 bg-white border-b border-slate-200 z-10 shrink-0 shadow-sm"
+        className="flex items-center justify-between px-4 bg-slate-50 border-b border-slate-200 z-10 shrink-0 shadow-sm"
         style={{ minHeight: '45px' }}
       >
         <div className="flex items-center space-x-3">

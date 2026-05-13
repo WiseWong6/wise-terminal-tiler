@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Code, Settings, Github } from 'lucide-react';
+import { Code, Coffee, Github, ChevronDown } from 'lucide-react';
 import Editor from './components/Editor';
 import MixedPreview from './components/MixedPreview';
 import AISettingsModal from './components/AISettingsModal';
+import AboutModal from './components/AboutModal';
 import { useDebounce } from './hooks/useDebounce';
 import {
   SAMPLE_MERMAID,
@@ -20,12 +21,20 @@ const DEFAULT_SIDEBAR_WIDTH = 420;
 const App: React.FC = () => {
   const [code, setCode] = useState<string>(SAMPLE_MIXED);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return Math.max(MIN_SIDEBAR_WIDTH, Math.round(window.innerWidth * 0.35));
+    }
+    return DEFAULT_SIDEBAR_WIDTH;
+  });
   const [isFixing, setIsFixing] = useState(false);
   const [aiConfig, setAiConfig] = useState<AIConfig | null>(() => loadAIConfig());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
   const [activeSample, setActiveSample] = useState<string>('Mixed');
   const isDragging = useRef(false);
+  const sampleMenuRef = useRef<HTMLDivElement>(null);
 
   const [debouncedCode, flushCode] = useDebounce(code, 600);
 
@@ -70,7 +79,19 @@ const App: React.FC = () => {
     flushCode(sample);
     setActiveSample(label);
     setError(null);
+    setIsSampleMenuOpen(false);
   };
+
+  useEffect(() => {
+    if (!isSampleMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (sampleMenuRef.current && !sampleMenuRef.current.contains(e.target as Node)) {
+        setIsSampleMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isSampleMenuOpen]);
 
   const handleSaveAIConfig = (config: AIConfig) => {
     saveAIConfig(config);
@@ -108,9 +129,9 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-slate-900">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 bg-white border-b border-slate-200 shrink-0">
+      <header className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200 shrink-0">
         <div className="flex items-center space-x-3">
           <div className="bg-indigo-600 p-1.5 rounded-lg">
             <Code className="text-white w-5 h-5" />
@@ -119,26 +140,42 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          <div className="hidden md:flex space-x-2">
-            {[
-              ['Mixed', SAMPLE_MIXED],
-              ['Markdown', SAMPLE_MARKDOWN],
-              ['HTML', SAMPLE_HTML],
-              ['JSON', SAMPLE_JSON],
-              ['Mermaid', SAMPLE_MERMAID],
-            ].map(([label, sample]) => (
-              <button
-                key={label}
-                onClick={() => loadSample(label, sample)}
-                className={`px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                  activeSample === label
-                    ? 'bg-indigo-600 text-white'
-                    : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+          <div className="hidden md:block relative" ref={sampleMenuRef}>
+            <button
+              onClick={() => setIsSampleMenuOpen(prev => !prev)}
+              className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
+                isSampleMenuOpen
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
+              }`}
+            >
+              案例
+              <ChevronDown size={14} className={`transition-transform ${isSampleMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isSampleMenuOpen && (
+              <div className="absolute top-full left-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                {[
+                  ['Mixed', SAMPLE_MIXED],
+                  ['Markdown', SAMPLE_MARKDOWN],
+                  ['HTML', SAMPLE_HTML],
+                  ['JSON', SAMPLE_JSON],
+                  ['Mermaid', SAMPLE_MERMAID],
+                ].map(([label, sample]) => (
+                  <button
+                    key={label}
+                    onClick={() => loadSample(label, sample)}
+                    className={`w-full text-left px-3 py-1.5 text-xs font-medium transition-colors ${
+                      activeSample === label
+                        ? 'text-indigo-600 bg-indigo-50'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <a
@@ -152,11 +189,11 @@ const App: React.FC = () => {
           </a>
 
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="p-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-            title="AI Settings"
+            onClick={() => setIsAboutOpen(true)}
+            className="p-2 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+            title="关于"
           >
-            <Settings size={20} />
+            <Coffee size={20} />
           </button>
 
         </div>
@@ -197,6 +234,11 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)}
         onSave={handleSaveAIConfig}
         initialConfig={aiConfig}
+      />
+
+      <AboutModal
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
       />
     </div>
   );

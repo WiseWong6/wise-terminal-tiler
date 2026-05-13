@@ -158,6 +158,37 @@ npm run format       # Format with Prettier
 
 ---
 
+## Release and Website Sync
+
+The source of truth for `mixed-preview` is this repository: make day-to-day changes only under `wise-labs/mixed-preview`. The `WiseWong6/website` repository stores built website artifacts only. The live `/mixed-preview/` route is served from `website/mixed-preview/index.html` and `website/mixed-preview/assets/**`.
+
+Normal release flow:
+
+```bash
+cd /Users/wisewong/Documents/Developer/wise-labs/mixed-preview
+npm run build
+
+cd ..
+git add mixed-preview
+git commit -m "fix(mixed-preview): ..."
+git push origin main
+```
+
+After a push to `wise-labs/main`, the `Sync Mixed Preview to Website` GitHub Actions workflow automatically:
+
+1. Installs `mixed-preview` dependencies
+2. Runs `npm run build`
+3. Syncs `mixed-preview/dist/index.html` and `mixed-preview/dist/assets/**` into `WiseWong6/website` under `mixed-preview/`
+
+Do not manually edit local `website/mixed-preview/` for normal releases. The local `website/` directory is a separate Git repository and may contain unrelated pending changes; overwriting it by hand can make source and deployed artifacts drift. Only copy `dist` into `website/mixed-preview/` for an emergency hotfix when Actions is failing, and commit only `mixed-preview/` inside the `website` repository.
+
+To verify sync:
+
+- Check the `Sync Mixed Preview to Website` workflow in `WiseWong6/wise-labs`
+- Check that `WiseWong6/website` received a `chore: sync mixed-preview from wise-labs` commit
+
+---
+
 ## Scope
 
 **It does**
