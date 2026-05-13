@@ -101,12 +101,120 @@ type CopyPayload = {
   hasEmbeddedImages?: boolean;
 };
 
+type InlineStyleOptions = {
+  styleProps?: readonly string[];
+  inlineImages?: boolean;
+};
+
+type HtmlCapture = {
+  blob: Blob;
+  width: number;
+  height: number;
+};
+
+type CaptureRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 const WECHAT_ARTICLE_WIDTH = 677;
+const MAX_INLINE_IMAGE_PIXELS = 4_000_000;
+const HTML_CAPTURE_PADDING = 8;
+const HTML_PREVIEW_LANGUAGES = new Set(['html', 'html-preview']);
+const NON_VISUAL_CAPTURE_TAGS = new Set(['script', 'style', 'template', 'link', 'meta', 'title']);
+const MIXED_CAPTURE_VISUAL_TAGS = new Set([
+  'img',
+  'svg',
+  'canvas',
+  'video',
+  'iframe',
+  'table',
+  'pre',
+  'code',
+]);
+const HTML_FRAGMENT_TAGS = [
+  'article',
+  'aside',
+  'body',
+  'br',
+  'button',
+  'canvas',
+  'div',
+  'figure',
+  'footer',
+  'form',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'header',
+  'hr',
+  'img',
+  'main',
+  'nav',
+  'ol',
+  'p',
+  'section',
+  'span',
+  'style',
+  'svg',
+  'table',
+  'ul',
+] as const;
 
 const COPY_STYLE_PROPS = [
   'display',
   'box-sizing',
+  'flex',
+  'flex-basis',
+  'flex-direction',
+  'flex-flow',
+  'flex-grow',
+  'flex-shrink',
+  'flex-wrap',
+  'align-content',
+  'align-items',
+  'align-self',
+  'justify-content',
+  'justify-items',
+  'justify-self',
+  'gap',
+  'row-gap',
+  'column-gap',
+  'grid',
+  'grid-area',
+  'grid-auto-columns',
+  'grid-auto-flow',
+  'grid-auto-rows',
+  'grid-column',
+  'grid-column-end',
+  'grid-column-start',
+  'grid-row',
+  'grid-row-end',
+  'grid-row-start',
+  'grid-template',
+  'grid-template-areas',
+  'grid-template-columns',
+  'grid-template-rows',
+  'position',
+  'top',
+  'right',
+  'bottom',
+  'left',
+  'z-index',
+  'width',
+  'min-width',
   'max-width',
+  'height',
+  'min-height',
+  'max-height',
+  'overflow',
+  'overflow-x',
+  'overflow-y',
   'margin',
   'margin-top',
   'margin-right',
@@ -118,13 +226,36 @@ const COPY_STYLE_PROPS = [
   'padding-bottom',
   'padding-left',
   'border',
+  'border-width',
+  'border-style',
+  'border-color',
   'border-top',
+  'border-top-width',
+  'border-top-style',
+  'border-top-color',
   'border-right',
+  'border-right-width',
+  'border-right-style',
+  'border-right-color',
   'border-bottom',
+  'border-bottom-width',
+  'border-bottom-style',
+  'border-bottom-color',
   'border-left',
+  'border-left-width',
+  'border-left-style',
+  'border-left-color',
   'border-radius',
+  'border-top-left-radius',
+  'border-top-right-radius',
+  'border-bottom-right-radius',
+  'border-bottom-left-radius',
   'background',
   'background-color',
+  'background-image',
+  'background-size',
+  'background-position',
+  'background-repeat',
   'color',
   'font',
   'font-family',
@@ -142,9 +273,18 @@ const COPY_STYLE_PROPS = [
   'vertical-align',
   'list-style',
   'list-style-type',
+  'list-style-position',
   'border-collapse',
+  'border-spacing',
   'table-layout',
   'box-shadow',
+  'transform',
+  'transform-origin',
+  'object-fit',
+  'object-position',
+  'opacity',
+  'break-inside',
+  'page-break-inside',
 ] as const;
 
 const FLOW_TEXT_TAGS = new Set([
@@ -169,28 +309,97 @@ const FLOW_TEXT_TAGS = new Set([
 ]);
 
 const RESPONSIVE_MEDIA_TAGS = new Set(['img', 'svg', 'canvas', 'video']);
+const PRESERVE_LAYOUT_ATTR = 'data-copy-preserve-layout';
 
 const getReadableText = (element: HTMLElement) =>
   (element.innerText || element.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
 
-const appendInlineStyles = (source: Element, target: Element) => {
+const looksLikeHtml = (rawCode: string) => {
+  const trimmed = rawCode.trim();
+  if (!trimmed) return false;
+
+  if (/^<!doctype\s+html[\s>]/i.test(trimmed) || /^<html[\s>]/i.test(trimmed)) {
+    return true;
+  }
+
+  const tagNames = HTML_FRAGMENT_TAGS.join('|');
+  const startsWithHtmlTag = new RegExp(`^<(${tagNames})(\\s|>|/)`, 'i').test(trimmed);
+  const hasPairedHtmlTag = new RegExp(`<(${tagNames})(\\s|>)[\\s\\S]*<\\/\\1>`, 'i').test(trimmed);
+
+  return startsWithHtmlTag || hasPairedHtmlTag;
+};
+
+const hasMultipleFencedCodeBlocks = (rawCode: string) => {
+  const codeBlockMatches = rawCode.trim().match(/```[a-zA-Z]/g);
+  return Boolean(codeBlockMatches && codeBlockMatches.length >= 2);
+};
+
+const imageToDataUrl = (image: HTMLImageElement, quality = 0.82) => {
+  try {
+    if (!image.naturalWidth || !image.naturalHeight) {
+      return image.currentSrc || image.src;
+    }
+    if (image.naturalWidth * image.naturalHeight > MAX_INLINE_IMAGE_PIXELS) {
+      return image.currentSrc || image.src;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+
+    const context = canvas.getContext('2d');
+    if (!context) {
+      return image.currentSrc || image.src;
+    }
+
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0);
+
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch (err) {
+    console.warn('Image data URL fallback:', err);
+    return image.currentSrc || image.src;
+  }
+};
+
+const appendInlineStyles = (source: Element, target: Element, options: InlineStyleOptions = {}) => {
   const view = source.ownerDocument.defaultView;
   const computedStyle = view?.getComputedStyle(source);
   const targetStyle = (target as HTMLElement | SVGElement).style;
+  const styleProps = options.styleProps ?? COPY_STYLE_PROPS;
+  const inlineImages = options.inlineImages ?? true;
 
   if (computedStyle && targetStyle) {
-    COPY_STYLE_PROPS.forEach((prop) => {
+    styleProps.forEach((prop) => {
       const value = computedStyle.getPropertyValue(prop);
-      if (value && value !== 'auto' && value !== 'normal' && value !== 'none') {
+      if (value) {
         targetStyle.setProperty(prop, value);
       }
     });
   }
 
-  Array.from(source.childNodes).forEach((sourceChild, index) => {
-    const targetChild = target.childNodes[index];
-    if (sourceChild instanceof Element && targetChild instanceof Element) {
-      appendInlineStyles(sourceChild, targetChild);
+  const sourceTagName = source.tagName.toLowerCase();
+  const targetTagName = target.tagName.toLowerCase();
+
+  if (inlineImages && sourceTagName === 'img' && targetTagName === 'img') {
+    (target as HTMLImageElement).src = imageToDataUrl(source as HTMLImageElement);
+  }
+
+  if (sourceTagName === 'li' && targetTagName === 'li' && view) {
+    const beforeContent = view.getComputedStyle(source, '::before').content;
+    if (beforeContent && beforeContent !== 'none' && beforeContent !== 'normal') {
+      const cleanContent = beforeContent.replace(/^["']|["']$/g, '').trim();
+      if (cleanContent) {
+        target.insertBefore(document.createTextNode(`${cleanContent} `), target.firstChild);
+      }
+    }
+  }
+
+  Array.from(source.children).forEach((sourceChild, index) => {
+    const targetChild = target.children[index];
+    if (targetChild) {
+      appendInlineStyles(sourceChild, targetChild, options);
     }
   });
 };
@@ -200,18 +409,28 @@ const cleanupPortableHtml = (root: HTMLElement) => {
     element.remove();
   });
 
-  root.querySelectorAll<HTMLElement>('*').forEach((element) => {
+  const elements = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+  const preserveLayoutElements = new WeakSet<HTMLElement>();
+  elements.forEach((element) => {
+    if (element.closest(`[${PRESERVE_LAYOUT_ATTR}="true"]`)) {
+      preserveLayoutElements.add(element);
+    }
+  });
+
+  elements.forEach((element) => {
     Array.from(element.attributes).forEach((attr) => {
       if (attr.name.startsWith('data-copy-')) {
         element.removeAttribute(attr.name);
       }
     });
     element.removeAttribute('class');
+    element.removeAttribute('id');
     element.removeAttribute('contenteditable');
 
     const tagName = element.tagName.toLowerCase();
+    const preserveLayout = preserveLayoutElements.has(element);
 
-    if (FLOW_TEXT_TAGS.has(tagName)) {
+    if (!preserveLayout && FLOW_TEXT_TAGS.has(tagName)) {
       element.style.removeProperty('width');
       element.style.removeProperty('min-width');
       element.style.removeProperty('height');
@@ -225,23 +444,26 @@ const cleanupPortableHtml = (root: HTMLElement) => {
     if (RESPONSIVE_MEDIA_TAGS.has(tagName)) {
       element.removeAttribute('width');
       element.removeAttribute('height');
-      element.style.setProperty('display', 'block');
-      element.style.setProperty('width', '100%');
       element.style.setProperty('max-width', '100%');
       element.style.setProperty('height', 'auto');
-      element.style.setProperty('margin', '16px auto');
-      element.style.setProperty('border', '0');
       element.style.setProperty('vertical-align', 'top');
+
+      if (!preserveLayout) {
+        element.style.setProperty('display', 'block');
+        element.style.setProperty('width', '100%');
+        element.style.setProperty('margin', '16px auto');
+        element.style.setProperty('border', '0');
+      }
     }
 
-    if (tagName === 'table') {
+    if (!preserveLayout && tagName === 'table') {
       element.style.setProperty('width', '100%');
       element.style.setProperty('max-width', '100%');
       element.style.setProperty('border-collapse', 'collapse');
       element.style.setProperty('table-layout', 'auto');
     }
 
-    if (tagName === 'pre') {
+    if (!preserveLayout && tagName === 'pre') {
       element.style.removeProperty('height');
       element.style.removeProperty('max-height');
       element.style.setProperty('max-width', '100%');
@@ -287,14 +509,31 @@ const copyPlainText = async (text: string) => {
   }
 };
 
-const copyRichHtmlViaSelection = (html: string) => {
-  const selection = window.getSelection();
-  const savedRanges = selection
-    ? Array.from({ length: selection.rangeCount }, (_, index) =>
-        selection.getRangeAt(index).cloneRange(),
+const saveCurrentSelection = () => {
+  const mainSelection = window.getSelection();
+  const savedRanges = mainSelection
+    ? Array.from({ length: mainSelection.rangeCount }, (_, index) =>
+        mainSelection.getRangeAt(index).cloneRange(),
       )
     : [];
+
+  return { mainSelection, savedRanges };
+};
+
+const restoreSelection = (
+  mainSelection: Selection | null,
+  savedRanges: Range[],
+  activeSelection?: Selection | null,
+) => {
+  activeSelection?.removeAllRanges();
+  mainSelection?.removeAllRanges();
+  savedRanges.forEach((range) => mainSelection?.addRange(range));
+};
+
+const copyRichHtmlViaDocumentSelection = (html: string) => {
+  const { mainSelection, savedRanges } = saveCurrentSelection();
   const tempContainer = document.createElement('div');
+  tempContainer.setAttribute('contenteditable', 'true');
   tempContainer.innerHTML = html;
   tempContainer.style.cssText = [
     'position:fixed',
@@ -311,16 +550,86 @@ const copyRichHtmlViaSelection = (html: string) => {
   try {
     const range = document.createRange();
     range.selectNodeContents(tempContainer);
-    selection?.removeAllRanges();
-    selection?.addRange(range);
+    mainSelection?.removeAllRanges();
+    mainSelection?.addRange(range);
 
     if (!document.execCommand('copy')) {
       throw new Error('document.execCommand("copy") returned false');
     }
   } finally {
-    selection?.removeAllRanges();
-    savedRanges.forEach((range) => selection?.addRange(range));
+    restoreSelection(mainSelection, savedRanges);
     document.body.removeChild(tempContainer);
+  }
+};
+
+const copyRichHtmlViaIframeSelection = (html: string) => {
+  const { mainSelection, savedRanges } = saveCurrentSelection();
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = [
+    'position:fixed',
+    'left:0',
+    'top:0',
+    `width:${WECHAT_ARTICLE_WIDTH}px`,
+    'height:1px',
+    'border:0',
+    'opacity:0.01',
+    'pointer-events:none',
+    'background:#ffffff',
+    'z-index:-1',
+  ].join(';');
+
+  document.body.appendChild(iframe);
+
+  try {
+    const doc = iframe.contentDocument;
+    const frameWindow = iframe.contentWindow;
+    if (!doc || !frameWindow) {
+      throw new Error('Failed to create rich copy iframe');
+    }
+
+    doc.open();
+    doc.write(
+      [
+        '<!doctype html>',
+        '<html>',
+        '<head>',
+        '<meta charset="UTF-8">',
+        '<style>',
+        'html,body{margin:0;padding:0;background:#fff;}',
+        `body{width:${WECHAT_ARTICLE_WIDTH}px;color:#1f2937;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;}`,
+        'img,svg,canvas,video{max-width:100%;}',
+        '</style>',
+        '</head>',
+        '<body>',
+        html,
+        '</body>',
+        '</html>',
+      ].join(''),
+    );
+    doc.close();
+
+    const selection = frameWindow.getSelection();
+    const range = doc.createRange();
+    range.selectNodeContents(doc.body);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    frameWindow.focus();
+
+    if (!doc.execCommand('copy')) {
+      throw new Error('document.execCommand("copy") returned false');
+    }
+  } finally {
+    restoreSelection(mainSelection, savedRanges, iframe.contentWindow?.getSelection());
+    document.body.removeChild(iframe);
+  }
+};
+
+const copyRichHtmlViaSelection = (html: string) => {
+  try {
+    copyRichHtmlViaIframeSelection(html);
+  } catch (err) {
+    console.warn('Iframe selection rich copy failed, falling back to document selection:', err);
+    copyRichHtmlViaDocumentSelection(html);
   }
 };
 
@@ -331,24 +640,38 @@ const copyRichHtml = async (
 ) => {
   if (!html.trim()) return;
 
-  let clipboardError: unknown = null;
-  if (
-    !options.preferSelection &&
-    typeof ClipboardItem !== 'undefined' &&
-    navigator.clipboard?.write
-  ) {
+  const writeClipboardItem = async () => {
+    if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+      throw new Error('ClipboardItem rich copy is not available');
+    }
+
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([html], { type: 'text/html' }),
+        'text/plain': new Blob([plain], { type: 'text/plain' }),
+      }),
+    ]);
+  };
+
+  if (options.preferSelection) {
     try {
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob([plain], { type: 'text/plain' }),
-        }),
-      ]);
+      copyRichHtmlViaSelection(html);
       return;
     } catch (err) {
-      clipboardError = err;
-      console.warn('navigator.clipboard.write failed, falling back to selection copy:', err);
+      console.warn('Selection rich copy failed, falling back to ClipboardItem:', err);
     }
+
+    await writeClipboardItem();
+    return;
+  }
+
+  let clipboardError: unknown = null;
+  try {
+    await writeClipboardItem();
+    return;
+  } catch (err) {
+    clipboardError = err;
+    console.warn('navigator.clipboard.write failed, falling back to selection copy:', err);
   }
 
   try {
@@ -378,14 +701,6 @@ const detectContentType = (rawCode: string): ContentType => {
     }
   }
 
-  // Pure HTML
-  if (
-    trimmed.toLowerCase().startsWith('<!doctype html>') ||
-    trimmed.toLowerCase().startsWith('<html')
-  ) {
-    return 'html';
-  }
-
   // Pure Mermaid
   const mermaidKeywords = [
     'graph',
@@ -407,9 +722,13 @@ const detectContentType = (rawCode: string): ContentType => {
   }
 
   // Mixed: contains two or more code blocks
-  const codeBlockMatches = trimmed.match(/```[a-zA-Z]/g);
-  if (codeBlockMatches && codeBlockMatches.length >= 2) {
+  if (hasMultipleFencedCodeBlocks(trimmed)) {
     return 'mixed';
+  }
+
+  // Pure HTML documents or fragments
+  if (looksLikeHtml(trimmed)) {
+    return 'html';
   }
 
   return 'markdown';
@@ -457,15 +776,29 @@ const svgToPngBlob = (svgContent: string): Promise<Blob> => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
+      const sourceCanvas = document.createElement('canvas');
+      sourceCanvas.width = Math.max(1, Math.ceil(img.naturalWidth || img.width || nativeWidth || 1));
+      sourceCanvas.height = Math.max(1, Math.ceil(img.naturalHeight || img.height || nativeHeight || 1));
+
+      const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
+      if (!sourceContext) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+
+      sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
+      sourceContext.drawImage(img, 0, 0, sourceCanvas.width, sourceCanvas.height);
+
+      const bounds = getCanvasContentBounds(sourceCanvas, 16);
       const canvas = document.createElement('canvas');
       const targetWidth = 2500;
       let scale = 3;
-      if (img.width < targetWidth) {
-        scale = targetWidth / img.width;
+      if (bounds.width < targetWidth) {
+        scale = targetWidth / bounds.width;
       }
       scale = Math.min(scale, 10);
-      canvas.width = Math.ceil(img.width * scale);
-      canvas.height = Math.ceil(img.height * scale);
+      canvas.width = Math.ceil(bounds.width * scale);
+      canvas.height = Math.ceil(bounds.height * scale);
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
@@ -474,7 +807,17 @@ const svgToPngBlob = (svgContent: string): Promise<Blob> => {
       }
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(
+        sourceCanvas,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
 
       canvas.toBlob((blob) => {
         if (blob) resolve(blob);
@@ -491,8 +834,128 @@ const svgToPngBlob = (svgContent: string): Promise<Blob> => {
   });
 };
 
+const escapeHtmlAttribute = (value: string) =>
+  value.replace(/[&<>"']/g, (char) => {
+    switch (char) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      default:
+        return '&#39;';
+    }
+  });
+
 const createResponsiveImageHtml = (src: string, alt: string) =>
-  `<img src="${src}" alt="${alt}" style="display:block;width:100%;max-width:${WECHAT_ARTICLE_WIDTH}px;height:auto;margin:16px auto;border:0;vertical-align:top;" />`;
+  `<img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}" style="display:block;width:100%;max-width:${WECHAT_ARTICLE_WIDTH}px;height:auto;margin:16px auto;border:0;vertical-align:top;" />`;
+
+const createEmbeddedPreviewImageHtml = (
+  src: string,
+  alt: string,
+  dimensions?: { width: number; height: number },
+) => {
+  const width = dimensions ? Math.round(dimensions.width) : null;
+  const height = dimensions ? Math.round(dimensions.height) : null;
+  const sizeAttributes = width && height ? ` width="${width}" height="${height}"` : '';
+  const widthStyle = width ? `width:${width}px;` : 'width:auto;';
+
+  return `<img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}"${sizeAttributes} style="display:block;${widthStyle}max-width:100%;height:auto;margin:0 auto;border:0;vertical-align:top;" />`;
+};
+
+const getCanvasContentBounds = (canvas: HTMLCanvasElement, padding = 0): CaptureRect => {
+  const fallback = {
+    x: 0,
+    y: 0,
+    width: Math.max(1, canvas.width),
+    height: Math.max(1, canvas.height),
+  };
+
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context || canvas.width === 0 || canvas.height === 0) return fallback;
+
+  try {
+    const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const offset = (y * width + x) * 4;
+        const alpha = data[offset + 3];
+        const red = data[offset];
+        const green = data[offset + 1];
+        const blue = data[offset + 2];
+        const isVisibleContent =
+          alpha > 8 && (alpha < 245 || red < 248 || green < 248 || blue < 248);
+
+        if (isVisibleContent) {
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+
+    if (maxX < 0 || maxY < 0) return fallback;
+
+    const left = Math.max(0, minX - padding);
+    const top = Math.max(0, minY - padding);
+    const right = Math.min(width, maxX + 1 + padding);
+    const bottom = Math.min(height, maxY + 1 + padding);
+
+    return {
+      x: left,
+      y: top,
+      width: Math.max(1, right - left),
+      height: Math.max(1, bottom - top),
+    };
+  } catch (err) {
+    console.warn('Failed to inspect canvas pixels for cropping:', err);
+    return fallback;
+  }
+};
+
+const cropCanvasToContent = (canvas: HTMLCanvasElement, padding = 0) => {
+  const bounds = getCanvasContentBounds(canvas, padding);
+  if (
+    bounds.x === 0 &&
+    bounds.y === 0 &&
+    bounds.width === canvas.width &&
+    bounds.height === canvas.height
+  ) {
+    return canvas;
+  }
+
+  const croppedCanvas = document.createElement('canvas');
+  croppedCanvas.width = bounds.width;
+  croppedCanvas.height = bounds.height;
+
+  const context = croppedCanvas.getContext('2d');
+  if (!context) return canvas;
+
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, croppedCanvas.width, croppedCanvas.height);
+  context.drawImage(
+    canvas,
+    bounds.x,
+    bounds.y,
+    bounds.width,
+    bounds.height,
+    0,
+    0,
+    croppedCanvas.width,
+    croppedCanvas.height,
+  );
+
+  return croppedCanvas;
+};
 
 const replaceMermaidBlocksWithImages = async (root: HTMLElement) => {
   const mermaidBlocks = Array.from(
@@ -562,7 +1025,425 @@ const buildMermaidImagesPayload = async (sourceRoot: HTMLElement): Promise<CopyP
   };
 };
 
-const expandHtmlPreviews = (sourceRoot: HTMLElement, cloneRoot: HTMLElement) => {
+const createHtmlBodyCopySection = (body: HTMLElement, margin: string) => {
+  const bodyClone = body.cloneNode(true) as HTMLElement;
+  appendInlineStyles(body, bodyClone);
+
+  const section = document.createElement('section');
+  const bodyStyle = bodyClone.getAttribute('style');
+  section.setAttribute(PRESERVE_LAYOUT_ATTR, 'true');
+  section.style.cssText = [
+    bodyStyle ?? '',
+    'width:100%',
+    `max-width:${WECHAT_ARTICLE_WIDTH}px`,
+    `margin:${margin}`,
+    'box-sizing:border-box',
+    'background:#ffffff',
+  ]
+    .filter(Boolean)
+    .join(';');
+
+  while (bodyClone.firstChild) {
+    section.appendChild(bodyClone.firstChild);
+  }
+
+  return section;
+};
+
+const createHtmlSourceCopySection = (html: string, margin: string) => {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  return createHtmlBodyCopySection(doc.body, margin);
+};
+
+const waitForIframeReady = (iframe: HTMLIFrameElement, timeoutMs = 1500) =>
+  new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      iframe.removeEventListener('load', finish);
+      window.clearTimeout(timeoutId);
+      resolve();
+    };
+    const isReady = () => {
+      try {
+        const doc = iframe.contentDocument;
+        return Boolean(doc?.body && doc.readyState !== 'loading');
+      } catch {
+        return true;
+      }
+    };
+    const timeoutId = window.setTimeout(finish, timeoutMs);
+
+    if (isReady()) {
+      finish();
+      return;
+    }
+
+    iframe.addEventListener('load', finish, { once: true });
+  });
+
+const waitForHtmlPreviewFrames = async (sourceRoot: HTMLElement) => {
+  const frames = Array.from(
+    sourceRoot.querySelectorAll<HTMLIFrameElement>('[data-copy-role="html-preview"] iframe'),
+  );
+  await Promise.all(frames.map((frame) => waitForIframeReady(frame)));
+};
+
+const waitForHtmlDocumentAssets = async (doc: Document, timeoutMs = 2500) => {
+  const view = doc.defaultView;
+  const images = Array.from(doc.images);
+  const imagePromises = images.map((image) => {
+    if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+    if (typeof image.decode === 'function') {
+      return image.decode().catch(() => undefined);
+    }
+    return new Promise<void>((resolve) => {
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+    });
+  });
+
+  const fontPromise = doc.fonts?.ready.catch(() => undefined) ?? Promise.resolve();
+  const paintPromise = new Promise<void>((resolve) => {
+    (view?.requestAnimationFrame ?? window.requestAnimationFrame)(() => resolve());
+  });
+
+  await Promise.race([
+    Promise.all([...imagePromises, fontPromise, paintPromise]),
+    new Promise<void>((resolve) => window.setTimeout(resolve, timeoutMs)),
+  ]);
+};
+
+const isVisibleCaptureElement = (element: Element) => {
+  if (NON_VISUAL_CAPTURE_TAGS.has(element.tagName.toLowerCase())) {
+    return false;
+  }
+
+  const view = element.ownerDocument.defaultView;
+  const computedStyle = view?.getComputedStyle(element);
+  if (
+    computedStyle?.display === 'none' ||
+    computedStyle?.visibility === 'hidden' ||
+    computedStyle?.opacity === '0'
+  ) {
+    return false;
+  }
+
+  const rect = element.getBoundingClientRect();
+  return rect.width > 0 && rect.height > 0;
+};
+
+const parseCssPixel = (value: string | null | undefined) => {
+  const parsed = Number.parseFloat(value ?? '0');
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const parseRgbCssColor = (value: string) => {
+  const match = value.trim().match(/^rgba?\(([^)]+)\)$/i);
+  if (!match) return null;
+
+  const parts = match[1].split(/[,\s/]+/).filter(Boolean);
+  const [red, green, blue] = parts.slice(0, 3).map((part) => Number.parseFloat(part));
+  const alpha = parts[3] === undefined ? 1 : Number.parseFloat(parts[3]);
+
+  if (![red, green, blue, alpha].every(Number.isFinite)) return null;
+  return { red, green, blue, alpha };
+};
+
+const isTransparentCssColor = (value: string) => {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized || normalized === 'transparent') return true;
+
+  const rgb = parseRgbCssColor(normalized);
+  return Boolean(rgb && rgb.alpha <= 0.01);
+};
+
+const isPlainWhiteCssColor = (value: string) => {
+  const rgb = parseRgbCssColor(value);
+  return Boolean(
+    rgb &&
+      rgb.alpha > 0.01 &&
+      rgb.red >= 248 &&
+      rgb.green >= 248 &&
+      rgb.blue >= 248,
+  );
+};
+
+const hasVisibleBorder = (style: CSSStyleDeclaration, prefix: 'border' | 'outline') => {
+  if (prefix === 'outline') {
+    return (
+      parseCssPixel(style.outlineWidth) > 0 &&
+      !['none', 'hidden'].includes(style.outlineStyle) &&
+      !isTransparentCssColor(style.outlineColor)
+    );
+  }
+
+  return ['Top', 'Right', 'Bottom', 'Left'].some((side) => {
+    const sideName = side.toLowerCase();
+    const styleValue = style.getPropertyValue(`border-${sideName}-style`);
+    const widthValue = style.getPropertyValue(`border-${sideName}-width`);
+    const colorValue = style.getPropertyValue(`border-${sideName}-color`);
+
+    return (
+      parseCssPixel(widthValue) > 0 &&
+      !['none', 'hidden'].includes(styleValue) &&
+      !isTransparentCssColor(colorValue)
+    );
+  });
+};
+
+const hasMixedCaptureDecoration = (element: Element, style: CSSStyleDeclaration) => {
+  const tagName = element.tagName.toLowerCase();
+  if (MIXED_CAPTURE_VISUAL_TAGS.has(tagName)) return true;
+
+  const backgroundColor = style.backgroundColor;
+  const hasNonWhiteBackground =
+    backgroundColor &&
+    !isTransparentCssColor(backgroundColor) &&
+    !isPlainWhiteCssColor(backgroundColor);
+  const hasBackgroundImage = style.backgroundImage && style.backgroundImage !== 'none';
+
+  return Boolean(
+    hasNonWhiteBackground ||
+      hasBackgroundImage ||
+      hasVisibleBorder(style, 'border') ||
+      hasVisibleBorder(style, 'outline') ||
+      (style.boxShadow && style.boxShadow !== 'none'),
+  );
+};
+
+const getTextCaptureRects = (root: HTMLElement) => {
+  const rects: DOMRect[] = [];
+  const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (!node.textContent?.trim()) return NodeFilter.FILTER_REJECT;
+
+      const parent = node.parentElement;
+      if (
+        !parent ||
+        parent.closest('[data-copy-remove="true"]') ||
+        !isVisibleCaptureElement(parent)
+      ) {
+        return NodeFilter.FILTER_REJECT;
+      }
+
+      return NodeFilter.FILTER_ACCEPT;
+    },
+  });
+
+  while (walker.nextNode()) {
+    const range = root.ownerDocument.createRange();
+    range.selectNodeContents(walker.currentNode);
+    rects.push(
+      ...Array.from(range.getClientRects()).filter((rect) => rect.width > 0 && rect.height > 0),
+    );
+    range.detach();
+  }
+
+  return rects;
+};
+
+const getMixedPreviewCaptureRect = (root: HTMLElement) => {
+  const rootRect = root.getBoundingClientRect();
+  const rootStyle = window.getComputedStyle(root);
+  const maxRootWidth = Math.max(root.scrollWidth, root.clientWidth, Math.ceil(rootRect.width));
+  const maxRootHeight = Math.max(root.scrollHeight, root.clientHeight, Math.ceil(rootRect.height));
+  const rects = getTextCaptureRects(root);
+
+  Array.from(root.querySelectorAll<Element>('*')).forEach((element) => {
+    if (element.closest('[data-copy-remove="true"]') || !isVisibleCaptureElement(element)) return;
+
+    const view = element.ownerDocument.defaultView;
+    const style = view?.getComputedStyle(element);
+    if (!style || !hasMixedCaptureDecoration(element, style)) return;
+
+    const rect = element.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      rects.push(rect);
+    }
+  });
+
+  if (rects.length === 0) {
+    return {
+      x: 0,
+      y: 0,
+      width: Math.max(1, maxRootWidth),
+      height: Math.max(1, maxRootHeight),
+    };
+  }
+
+  const leftPadding = Math.max(parseCssPixel(rootStyle.paddingLeft), HTML_CAPTURE_PADDING);
+  const rightPadding = Math.max(parseCssPixel(rootStyle.paddingRight), HTML_CAPTURE_PADDING);
+  const topPadding = Math.max(parseCssPixel(rootStyle.paddingTop), HTML_CAPTURE_PADDING);
+  const bottomPadding = Math.max(parseCssPixel(rootStyle.paddingBottom), HTML_CAPTURE_PADDING);
+
+  const left = Math.max(
+    0,
+    Math.floor(Math.min(...rects.map((rect) => rect.left)) - rootRect.left - leftPadding),
+  );
+  const top = Math.max(
+    0,
+    Math.floor(Math.min(...rects.map((rect) => rect.top)) - rootRect.top - topPadding),
+  );
+  const right = Math.min(
+    maxRootWidth || Number.POSITIVE_INFINITY,
+    Math.ceil(Math.max(...rects.map((rect) => rect.right)) - rootRect.left + rightPadding),
+  );
+  const bottom = Math.min(
+    maxRootHeight || Number.POSITIVE_INFINITY,
+    Math.ceil(Math.max(...rects.map((rect) => rect.bottom)) - rootRect.top + bottomPadding),
+  );
+
+  return {
+    x: left,
+    y: top,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+  };
+};
+
+const getHtmlDocumentCaptureRect = (doc: Document) => {
+  const html = doc.documentElement;
+  const body = doc.body;
+
+  const contentElements = Array.from(body.children).filter(isVisibleCaptureElement);
+  const rects = (contentElements.length ? contentElements : [body])
+    .map((element) => element.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0);
+
+  if (rects.length === 0) {
+    return {
+      x: 0,
+      y: 0,
+      width: Math.max(1, Math.min(WECHAT_ARTICLE_WIDTH, html.clientWidth || body.clientWidth || 1)),
+      height: Math.max(1, body.scrollHeight || html.scrollHeight || 1),
+    };
+  }
+
+  const maxDocumentWidth = Math.max(html.scrollWidth, body.scrollWidth, html.clientWidth, body.clientWidth);
+  const maxDocumentHeight = Math.max(
+    html.scrollHeight,
+    body.scrollHeight,
+    html.clientHeight,
+    body.clientHeight,
+  );
+
+  const left = Math.max(
+    0,
+    Math.floor(Math.min(...rects.map((rect) => rect.left)) - HTML_CAPTURE_PADDING),
+  );
+  const top = Math.max(
+    0,
+    Math.floor(Math.min(...rects.map((rect) => rect.top)) - HTML_CAPTURE_PADDING),
+  );
+  const right = Math.min(
+    maxDocumentWidth || Number.POSITIVE_INFINITY,
+    Math.ceil(Math.max(...rects.map((rect) => rect.right)) + HTML_CAPTURE_PADDING),
+  );
+  const bottom = Math.min(
+    maxDocumentHeight || Number.POSITIVE_INFINITY,
+    Math.ceil(Math.max(...rects.map((rect) => rect.bottom)) + HTML_CAPTURE_PADDING),
+  );
+
+  return {
+    x: left,
+    y: top,
+    width: Math.max(1, right - left),
+    height: Math.max(1, bottom - top),
+  };
+};
+
+const captureHtmlFrameScreenshot = async (iframe: HTMLIFrameElement): Promise<HtmlCapture> => {
+  await waitForIframeReady(iframe);
+  const doc = iframe.contentDocument;
+  if (!doc?.body) throw new Error('HTML preview is not ready');
+
+  await waitForHtmlDocumentAssets(doc);
+
+  const html2canvas = (await import('html2canvas')).default;
+  const { x, y, width, height } = getHtmlDocumentCaptureRect(doc);
+  const computedBodyStyle = doc.defaultView?.getComputedStyle(doc.body);
+  const backgroundColor =
+    computedBodyStyle?.backgroundColor && computedBodyStyle.backgroundColor !== 'rgba(0, 0, 0, 0)'
+      ? computedBodyStyle.backgroundColor
+      : '#ffffff';
+
+  const canvas = await html2canvas(doc.documentElement, {
+    backgroundColor,
+    scale: 2,
+    useCORS: true,
+    allowTaint: false,
+    logging: false,
+    imageTimeout: 5000,
+    x,
+    y,
+    width,
+    height,
+    windowWidth: Math.max(width, doc.documentElement.clientWidth, WECHAT_ARTICLE_WIDTH),
+    windowHeight: Math.max(height, doc.documentElement.clientHeight),
+    scrollX: 0,
+    scrollY: 0,
+  });
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve({
+          blob,
+          width,
+          height,
+        });
+      }
+      else reject(new Error('Failed to create blob'));
+    }, 'image/png');
+  });
+};
+
+const capturePreviewElementScreenshot = async (element: HTMLElement): Promise<HtmlCapture> => {
+  await waitForHtmlPreviewFrames(element);
+
+  const html2canvas = (await import('html2canvas')).default;
+  const { x, y, width, height } = getMixedPreviewCaptureRect(element);
+  const scale = 2;
+  const windowWidth = Math.max(width + x, element.scrollWidth, element.clientWidth);
+  const windowHeight = Math.max(height + y, element.scrollHeight, element.clientHeight);
+
+  const canvas = await html2canvas(element, {
+    backgroundColor: '#ffffff',
+    scale,
+    useCORS: true,
+    allowTaint: false,
+    logging: false,
+    imageTimeout: 5000,
+    x,
+    y,
+    width,
+    height,
+    windowWidth,
+    windowHeight,
+    scrollX: 0,
+    scrollY: 0,
+  });
+  const outputCanvas = cropCanvasToContent(canvas, HTML_CAPTURE_PADDING * scale);
+  const outputWidth = Math.max(1, Math.ceil(outputCanvas.width / scale));
+  const outputHeight = Math.max(1, Math.ceil(outputCanvas.height / scale));
+
+  return new Promise((resolve, reject) => {
+    outputCanvas.toBlob((blob) => {
+      if (blob) {
+        resolve({
+          blob,
+          width: outputWidth,
+          height: outputHeight,
+        });
+      }
+      else reject(new Error('Failed to create blob'));
+    }, 'image/png');
+  });
+};
+
+const expandHtmlPreviews = async (sourceRoot: HTMLElement, cloneRoot: HTMLElement) => {
   const sourceFrames = Array.from(
     sourceRoot.querySelectorAll<HTMLIFrameElement>('[data-copy-role="html-preview"] iframe'),
   );
@@ -570,24 +1451,24 @@ const expandHtmlPreviews = (sourceRoot: HTMLElement, cloneRoot: HTMLElement) => 
     cloneRoot.querySelectorAll<HTMLIFrameElement>('[data-copy-role="html-preview"] iframe'),
   );
 
-  sourceFrames.forEach((sourceFrame, index) => {
-    const cloneFrame = cloneFrames[index];
-    const frameBody = sourceFrame.contentDocument?.body;
-    if (!cloneFrame || !frameBody) return;
+  await Promise.all(
+    sourceFrames.map(async (sourceFrame, index) => {
+      const cloneFrame = cloneFrames[index];
+      const frameBody = sourceFrame.contentDocument?.body;
+      if (!cloneFrame) return;
 
-    const bodyClone = frameBody.cloneNode(true) as HTMLElement;
-    appendInlineStyles(frameBody, bodyClone);
-
-    const replacement = document.createElement('section');
-    const bodyStyle = bodyClone.getAttribute('style');
-    replacement.style.cssText = bodyStyle ? `${bodyStyle};margin:16px 0;` : 'margin:16px 0;';
-    while (bodyClone.firstChild) {
-      replacement.appendChild(bodyClone.firstChild);
-    }
-
-    const copyBlock = cloneFrame.closest('[data-copy-role="html-preview"]');
-    copyBlock?.replaceWith(replacement);
-  });
+      const sourceHtml = sourceFrame.srcdoc || sourceFrame.getAttribute('srcdoc') || '';
+      const replacement = frameBody
+        ? createHtmlBodyCopySection(frameBody, '16px 0')
+        : createHtmlSourceCopySection(sourceHtml, '16px 0');
+      const copyBlock = cloneFrame.closest('[data-copy-role="html-preview"]');
+      const replaceTarget =
+        copyBlock?.parentElement?.tagName.toLowerCase() === 'pre'
+          ? copyBlock.parentElement
+          : copyBlock;
+      replaceTarget?.replaceWith(replacement);
+    }),
+  );
 };
 
 const wrapArticleHtml = (html: string, source: HTMLElement) => {
@@ -608,9 +1489,10 @@ const wrapArticleHtml = (html: string, source: HTMLElement) => {
 };
 
 const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPayload> => {
+  await waitForHtmlPreviewFrames(sourceRoot);
   const clone = sourceRoot.cloneNode(true) as HTMLElement;
   appendInlineStyles(sourceRoot, clone);
-  expandHtmlPreviews(sourceRoot, clone);
+  await expandHtmlPreviews(sourceRoot, clone);
   const hasEmbeddedImages = await replaceMermaidBlocksWithImages(clone);
   cleanupPortableHtml(clone);
 
@@ -619,84 +1501,6 @@ const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPay
     plain: getReadableText(clone),
     hasEmbeddedImages,
   };
-};
-
-const buildIframeCopyPayload = (doc: Document): CopyPayload => {
-  const body = doc.body;
-  const bodyClone = body.cloneNode(true) as HTMLElement;
-  appendInlineStyles(body, bodyClone);
-  cleanupPortableHtml(bodyClone);
-  const plain = getReadableText(bodyClone);
-
-  const replacement = document.createElement('section');
-  const bodyStyle = bodyClone.getAttribute('style');
-  replacement.style.cssText = bodyStyle || 'margin:0;';
-  while (bodyClone.firstChild) {
-    replacement.appendChild(bodyClone.firstChild);
-  }
-
-  return {
-    html: replacement.outerHTML,
-    plain,
-  };
-};
-
-const captureHtmlScreenshot = async (iframeBody: HTMLElement): Promise<Blob> => {
-  const html2canvas = (await import('html2canvas')).default;
-  const iframeDoc = iframeBody.ownerDocument;
-
-  // Copy both <style> and <link rel="stylesheet"> from iframe
-  const styles = Array.from(
-    iframeDoc.querySelectorAll('style, link[rel="stylesheet"]'),
-  )
-    .map((el) => el.outerHTML)
-    .join('');
-
-  const container = document.createElement('div');
-  container.style.cssText = [
-    'position:fixed',
-    'left:-9999px',
-    'top:0',
-    `width:${WECHAT_ARTICLE_WIDTH}px`,
-    'background:#ffffff',
-  ].join(';');
-  container.innerHTML = styles + iframeBody.innerHTML;
-  document.body.appendChild(container);
-
-  // Wait for all <link> stylesheets and fonts to load
-  const linkElements = Array.from(
-    container.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]'),
-  );
-  if (linkElements.length > 0) {
-    await Promise.all(
-      linkElements.map(
-        (link) =>
-          new Promise<void>((resolve) => {
-            link.onload = () => resolve();
-            link.onerror = () => resolve();
-          }),
-      ),
-    );
-    // Extra delay for webfont rendering
-    await new Promise((r) => setTimeout(r, 500));
-  }
-
-  try {
-    const canvas = await html2canvas(container, {
-      backgroundColor: '#ffffff',
-      scale: 2,
-      useCORS: true,
-    });
-
-    return new Promise((resolve, reject) => {
-      canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('Failed to create blob'));
-      }, 'image/png');
-    });
-  } finally {
-    document.body.removeChild(container);
-  }
 };
 
 // A component to render a single Mermaid diagram
@@ -758,71 +1562,22 @@ const MermaidDiagram: React.FC<{
     URL.revokeObjectURL(url);
   };
 
-  const handleDownloadPNG = () => {
+  const handleDownloadPNG = async () => {
     if (!svgContent) return;
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-    const svgEl = doc.documentElement;
-
-    svgEl.removeAttribute('style');
-
-    const viewBox = svgEl.getAttribute('viewBox');
-    let nativeWidth = 0;
-    let nativeHeight = 0;
-
-    if (viewBox) {
-      const parts = viewBox.split(/\s+|,/).filter(Boolean);
-      if (parts.length >= 4) {
-        nativeWidth = parseFloat(parts[2]);
-        nativeHeight = parseFloat(parts[3]);
-      }
+    try {
+      const blob = await svgToPngBlob(svgContent);
+      const pngUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = pngUrl;
+      a.download = `mermaid-diagram-${Date.now()}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(pngUrl);
+    } catch (err) {
+      console.error('Failed to download Mermaid PNG:', err);
     }
-
-    if (!nativeWidth) nativeWidth = parseFloat(svgEl.getAttribute('width') || '0');
-    if (!nativeHeight) nativeHeight = parseFloat(svgEl.getAttribute('height') || '0');
-
-    if (nativeWidth && nativeHeight) {
-      svgEl.setAttribute('width', nativeWidth.toString());
-      svgEl.setAttribute('height', nativeHeight.toString());
-    }
-
-    const serializer = new XMLSerializer();
-    const newSvgString = serializer.serializeToString(svgEl);
-
-    const img = new Image();
-    const svg64 = btoa(unescape(encodeURIComponent(newSvgString)));
-    const image64 = `data:image/svg+xml;base64,${svg64}`;
-
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-
-      const targetWidth = 2500;
-      let scale = 3;
-      if (img.width < targetWidth) {
-        scale = targetWidth / img.width;
-      }
-      scale = Math.min(scale, 10);
-
-      canvas.width = Math.ceil(img.width * scale);
-      canvas.height = Math.ceil(img.height * scale);
-
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        const pngUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = pngUrl;
-        a.download = `mermaid-diagram-${Date.now()}.png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      }
-    };
-    img.src = image64;
   };
 
   if (error) {
@@ -1004,16 +1759,13 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     switch (contentType) {
       case 'json':
         return '复制 JSON';
-      case 'html':
-        return '复制富文本';
       case 'mermaid':
-        return '复制富文本';
-      case 'mixed':
         return '复制富文本';
       default:
         return '复制富文本';
     }
   }, [contentType]);
+  const canCopyRichText = contentType !== 'html' && contentType !== 'mixed';
   // Pre-process the code to auto-detect pure JSON or pure Mermaid if not wrapped
   const preprocessCode = (input: string) => {
     const trimmed = input.trim();
@@ -1032,11 +1784,12 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
       }
     }
 
-    // Check if pure HTML document
-    if (
-      trimmed.toLowerCase().startsWith('<!doctype html>') ||
-      trimmed.toLowerCase().startsWith('<html')
-    ) {
+    if (hasMultipleFencedCodeBlocks(trimmed)) {
+      return input;
+    }
+
+    // Check if pure HTML document or fragment
+    if (looksLikeHtml(trimmed)) {
       return `\`\`\`html-preview\n${input}\n\`\`\``;
     }
 
@@ -1169,40 +1922,12 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
           break;
         }
         case 'html': {
-          const iframe = previewRef.current?.querySelector('iframe');
-          const doc = iframe?.contentDocument;
-          let payload: CopyPayload;
-          if (doc?.body) {
-            // Inline computed styles but skip cleanupPortableHtml — it strips
-            // width from <section> elements which breaks flex layouts used by
-            // 135-editor and similar rich HTML templates.
-            const bodyClone = doc.body.cloneNode(true) as HTMLElement;
-            appendInlineStyles(doc.body, bodyClone);
-            const plain = getReadableText(bodyClone);
-            const replacement = document.createElement('section');
-            const bodyStyle = bodyClone.getAttribute('style');
-            replacement.style.cssText =
-              (bodyStyle ? bodyStyle + ';' : '') +
-              `max-width:${WECHAT_ARTICLE_WIDTH}px;margin:0 auto;box-sizing:border-box;background:#ffffff;`;
-            while (bodyClone.firstChild) {
-              replacement.appendChild(bodyClone.firstChild);
-            }
-            payload = { html: replacement.outerHTML, plain };
-          } else {
-            console.warn(
-              'iframe.contentDocument unavailable, falling back to raw HTML source',
-            );
-            const fallbackDoc = new DOMParser().parseFromString(
-              code,
-              'text/html',
-            );
-            payload = buildIframeCopyPayload(fallbackDoc);
-          }
-          await copyRichHtml(payload.html, payload.plain);
-          break;
+          return;
+        }
+        case 'mixed': {
+          return;
         }
         case 'mermaid':
-        case 'mixed':
         case 'markdown':
         default: {
           if (!previewRef.current) throw new Error('Preview is not ready');
@@ -1257,24 +1982,69 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     }
   };
 
+  const handleCopyMixedScreenshot = async () => {
+    if (!previewRef.current) return;
+    try {
+      const capture = await capturePreviewElementScreenshot(previewRef.current);
+      const { blob, width, height } = capture;
+      const imageUrl = await blobToDataUrl(blob);
+      const html = createEmbeddedPreviewImageHtml(imageUrl, 'Mixed preview screenshot', {
+        width,
+        height,
+      });
+
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'image/png': blob,
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob(['Mixed preview screenshot'], { type: 'text/plain' }),
+          }),
+        ]);
+      } catch (err) {
+        console.warn(
+          'navigator.clipboard.write mixed screenshot failed, falling back to rich HTML image:',
+          err,
+        );
+        await copyRichHtml(html, 'Mixed preview screenshot', { preferSelection: true });
+      }
+
+      setCopiedImages(true);
+      setTimeout(() => setCopiedImages(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy mixed preview screenshot:', err);
+    }
+  };
+
   const handleCopyScreenshot = async () => {
     if (!previewRef.current) return;
     try {
       const iframe = previewRef.current.querySelector('iframe');
-      const doc = iframe?.contentDocument;
-      if (!doc?.body) throw new Error('HTML preview is not ready');
+      if (!iframe) throw new Error('HTML preview is not ready');
 
-      const blob = await captureHtmlScreenshot(doc.body);
+      const capture = await captureHtmlFrameScreenshot(iframe);
+      const { blob, width, height } = capture;
       const imageUrl = await blobToDataUrl(blob);
-      const html = createResponsiveImageHtml(imageUrl, 'HTML preview screenshot');
+      const html = createEmbeddedPreviewImageHtml(imageUrl, 'HTML preview screenshot', {
+        width,
+        height,
+      });
 
-      await navigator.clipboard.write([
-        new ClipboardItem({
-          'image/png': blob,
-          'text/html': new Blob([html], { type: 'text/html' }),
-          'text/plain': new Blob(['HTML preview screenshot'], { type: 'text/plain' }),
-        }),
-      ]);
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'image/png': blob,
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob(['HTML preview screenshot'], { type: 'text/plain' }),
+          }),
+        ]);
+      } catch (err) {
+        console.warn(
+          'navigator.clipboard.write HTML screenshot failed, falling back to rich HTML image:',
+          err,
+        );
+        await copyRichHtml(html, 'HTML preview screenshot', { preferSelection: true });
+      }
 
       setCopiedScreenshot(true);
       setTimeout(() => setCopiedScreenshot(false), 2000);
@@ -1312,20 +2082,37 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
           />
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopy}
-            disabled={!processedCode || copied || (contentType === 'mermaid' && mermaidCount === 0)}
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-              copied
-                ? 'bg-green-50 text-green-700 border-green-200'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-            }`}
-            title={copied ? '已复制' : copyLabel}
-          >
-            {copied ? <Check size={14} /> : <Copy size={14} />}
-            <span>{copied ? '已复制' : copyLabel}</span>
-          </button>
-          {mermaidCount > 0 && (
+          {canCopyRichText && (
+            <button
+              onClick={handleCopy}
+              disabled={!processedCode || copied || (contentType === 'mermaid' && mermaidCount === 0)}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+                copied
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+              title={copied ? '已复制' : copyLabel}
+            >
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              <span>{copied ? '已复制' : copyLabel}</span>
+            </button>
+          )}
+          {contentType === 'mixed' && (
+            <button
+              onClick={handleCopyMixedScreenshot}
+              disabled={copiedImages}
+              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+                copiedImages
+                  ? 'bg-green-50 text-green-700 border-green-200'
+                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+              }`}
+              title={copiedImages ? '已复制图片' : '复制混合预览为图片'}
+            >
+              {copiedImages ? <Check size={14} /> : <Camera size={14} />}
+              <span>{copiedImages ? '已复制图片' : '复制图片'}</span>
+            </button>
+          )}
+          {contentType !== 'mixed' && mermaidCount > 0 && (
             <button
               onClick={handleCopyImages}
               disabled={copiedImages}
@@ -1383,7 +2170,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
                   },
                   code({ className, children, ...props }: any) {
                     const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '');
-                    const language = match ? match[1] : '';
+                    const language = match ? match[1].toLowerCase() : '';
                     const content = String(children).replace(/\n$/, '');
 
                     // If it has a language match, it's a code block. Otherwise, treat as inline code.
@@ -1414,7 +2201,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
                       );
                     }
 
-                    if (isBlock && language === 'html-preview') {
+                    if (isBlock && HTML_PREVIEW_LANGUAGES.has(language)) {
                       return <HtmlPreview code={content} />;
                     }
 
