@@ -34,3 +34,4 @@ tania-replica/
 .playwright-mcp/
 .spec-workflow/
 page-*.yml
+terminal-tiler/docs/
