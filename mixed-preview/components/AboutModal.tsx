@@ -9,11 +9,16 @@ interface AboutModalProps {
 const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -71,11 +76,12 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   <Coffee size={14} className="text-indigo-600" />
                   请我喝咖啡
                 </h3>
-                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
-                  <div className="text-center text-slate-400">
-                    <Coffee size={28} className="mx-auto mb-1.5 opacity-50" />
-                    <span className="text-xs">赞赏码配图预留</span>
-                  </div>
+                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 overflow-hidden">
+                  <img
+                    src="/reward.jpg"
+                    alt="赞赏码"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
 
@@ -85,11 +91,12 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   <Newspaper size={14} className="text-indigo-600" />
                   关注我
                 </h3>
-                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center">
-                  <div className="text-center text-slate-400">
-                    <Newspaper size={28} className="mx-auto mb-1.5 opacity-50" />
-                    <span className="text-xs">公众号二维码预留</span>
-                  </div>
+                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 overflow-hidden">
+                  <img
+                    src="/qrcode.jpg"
+                    alt="公众号二维码"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               </div>
             </div>

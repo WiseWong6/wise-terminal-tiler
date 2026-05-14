@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Code, Coffee, Github, ChevronDown } from 'lucide-react';
+import { Code, Coffee, Github, Layers } from 'lucide-react';
 import Editor from './components/Editor';
 import MixedPreview from './components/MixedPreview';
 import AISettingsModal from './components/AISettingsModal';
@@ -143,18 +143,14 @@ const App: React.FC = () => {
           <div className="hidden md:block relative" ref={sampleMenuRef}>
             <button
               onClick={() => setIsSampleMenuOpen(prev => !prev)}
-              className={`flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-full transition-colors ${
-                isSampleMenuOpen
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
-              }`}
+              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
             >
+              <Layers size={14} />
               案例
-              <ChevronDown size={14} className={`transition-transform ${isSampleMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isSampleMenuOpen && (
-              <div className="absolute top-full left-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+              <div className="absolute top-full right-0 mt-1.5 w-32 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
                 {[
                   ['Mixed', SAMPLE_MIXED],
                   ['Markdown', SAMPLE_MARKDOWN],
@@ -182,18 +178,20 @@ const App: React.FC = () => {
             href="https://github.com/WiseWong6/wise-labs/tree/main/mixed-preview"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-            title="GitHub"
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            title="源码"
           >
-            <Github size={20} />
+            <Github size={14} />
+            源码
           </a>
 
           <button
             onClick={() => setIsAboutOpen(true)}
-            className="p-2 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors"
             title="关于"
           >
-            <Coffee size={20} />
+            <Coffee size={14} />
+            关于
           </button>
 
         </div>
@@ -211,8 +209,6 @@ const App: React.FC = () => {
             error={error}
             onFix={handleFixCode}
             isFixing={isFixing}
-            isCollapsed={isCollapsed}
-            onToggleSidebar={toggleSidebar}
           />
         </div>
 

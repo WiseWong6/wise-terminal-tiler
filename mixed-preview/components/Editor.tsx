@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, Wand2, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Copy, Check, Wand2, Loader2, Trash2 } from 'lucide-react';
 
 interface EditorProps {
   value: string;
@@ -7,11 +7,9 @@ interface EditorProps {
   error?: string | null;
   onFix?: () => void;
   isFixing?: boolean;
-  isCollapsed?: boolean;
-  onToggleSidebar?: () => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing = false, isCollapsed = false, onToggleSidebar }) => {
+const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing = false }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -30,15 +28,15 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing
       <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-200 shrink-0">
         <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Editor</h2>
         <div className="flex items-center space-x-2">
-          {onToggleSidebar && (
-            <button
-              onClick={onToggleSidebar}
-              className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-              title={isCollapsed ? '展开编辑器' : '收起编辑器'}
-            >
-              {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-            </button>
-          )}
+          <button
+            onClick={() => onChange('')}
+            disabled={!value}
+            className="flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-30"
+            title="清空"
+          >
+            <Trash2 size={14} />
+            <span>清空</span>
+          </button>
           <button
             onClick={handleCopy}
             disabled={!value || copied}

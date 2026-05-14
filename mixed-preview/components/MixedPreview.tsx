@@ -10,7 +10,8 @@ import {
   Image as ImageIcon,
   Copy,
   Check,
-  PanelLeftOpen,
+  PanelLeftClose,
+  Sidebar,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -1654,6 +1655,7 @@ const JsonViewer: React.FC<{ code: string; onFormatted?: (formatted: string) => 
           language="json"
           style={vscDarkPlus}
           className="!m-0 !rounded-t-none !rounded-b"
+          wrapLongLines
         >
           {code}
         </SyntaxHighlighter>
@@ -1669,7 +1671,7 @@ const JsonViewer: React.FC<{ code: string; onFormatted?: (formatted: string) => 
       >
         <span>JSON</span>
       </div>
-      <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none">
+      <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none" wrapLongLines>
         {formatted}
       </SyntaxHighlighter>
     </div>
@@ -2060,14 +2062,13 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
         style={{ minHeight: '45px' }}
       >
         <div className="flex items-center space-x-3">
-          {isCollapsed && onToggleSidebar && (
+          {onToggleSidebar && (
             <button
               onClick={onToggleSidebar}
-              className="flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900"
-              title="展开编辑器"
+              className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              title={isCollapsed ? '展开编辑器' : '收起编辑器'}
             >
-              <PanelLeftOpen size={14} />
-              <span>展开</span>
+              {isCollapsed ? <Sidebar size={14} /> : <PanelLeftClose size={14} />}
             </button>
           )}
           <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
