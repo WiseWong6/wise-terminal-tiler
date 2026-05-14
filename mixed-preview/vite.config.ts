@@ -8,7 +8,17 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: 'file-protocol-fix',
+      transformIndexHtml(html) {
+        return html
+          .replace(/ crossorigin/g, '')
+          .replace(/type="module"/g, 'defer');
+      },
+    },
+  ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
