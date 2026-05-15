@@ -193,7 +193,13 @@ OpenClaw Game 是 OpenClaw 的可视化看板，但不是 OpenClaw 的一部分�
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/image?repos=WiseWong6/wise-labs&type=Date)](https://www.star-history.com/#WiseWong6/wise-labs&Date)
+<a href="https://www.star-history.com/#WiseWong6/wise-labs&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date" />
+  </picture>
+</a>
 
 ---
 
