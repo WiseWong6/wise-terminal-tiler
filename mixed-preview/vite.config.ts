@@ -12,10 +12,10 @@ export default defineConfig({
     react(),
     {
       name: 'file-protocol-fix',
-      transformIndexHtml(html) {
+      transformIndexHtml(html, ctx) {
+        if (ctx.server) return html;
         return html
-          .replace(/ crossorigin/g, '')
-          .replace(/type="module"/g, 'defer');
+          .replace(/ crossorigin/g, '');
       },
     },
   ],
