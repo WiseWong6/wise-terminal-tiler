@@ -81,7 +81,6 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 5 个独立
 - 🎯 自动检测内容类型（Markdown / Mermaid / JSON / HTML）
 - 📊 Mermaid 图表导出 SVG / PNG（2500px 高清）
 - 🔒 HTML 在 iframe 沙盒中渲染
-- 🤖 AI 辅助修复语法错误
 
 **Tech Stack:** React 19, Vite, Mermaid, react-markdown, Tailwind CSS
 

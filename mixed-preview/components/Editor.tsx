@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { Copy, Check, Wand2, Loader2, Trash2 } from 'lucide-react';
+import { Copy, Check, Trash2 } from 'lucide-react';
 
 interface EditorProps {
   value: string;
   onChange: (value: string) => void;
   error?: string | null;
-  onFix?: () => void;
-  isFixing?: boolean;
 }
 
-const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing = false }) => {
+const Editor: React.FC<EditorProps> = ({ value, onChange, error }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -69,16 +67,6 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, error, onFix, isFixing
             <div className="flex-1 text-red-700 text-xs font-mono break-all max-h-32 overflow-y-auto">
               <strong>Syntax Error:</strong> {error}
             </div>
-            {onFix && (
-              <button
-                onClick={onFix}
-                disabled={isFixing}
-                className="flex items-center space-x-1.5 px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap self-start"
-              >
-                {isFixing ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                <span>{isFixing ? 'Fixing...' : 'Fix'}</span>
-              </button>
-            )}
           </div>
         </div>
       )}

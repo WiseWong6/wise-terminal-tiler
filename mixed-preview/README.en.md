@@ -41,7 +41,6 @@ Edit on the left, live render on the right:
 - Export Mermaid diagrams as SVG or PNG (PNG auto-scales to 2500px wide, white background)
 - Full HTML documents render in a sandboxed iframe with style isolation
 - 6 built-in sample contents, one-click switch: Mixed / Markdown / HTML / JSON / Flowchart / Sequence
-- AI fix: let AI fix your syntax errors, with configurable API providers
 
 ## Quick Start
 
@@ -112,21 +111,6 @@ Supports JSON5 syntax (comments, trailing commas, single quotes). Input is auto-
 ### HTML
 
 When a full HTML document is detected (starting with `<!DOCTYPE html>` or `<html`), it renders in a sandboxed iframe with full style support.
-
----
-
-## AI Fix
-
-When the preview encounters a syntax error, the editor shows the error message and a "Fix with AI" button. Clicking it sends your code and error to your configured AI provider, which returns the fixed code.
-
-Click the gear icon in the top-right to configure AI:
-
-| Provider Type | Supported Services |
-|--------------|-------------------|
-| OpenAI-compatible | OpenAI, DeepSeek, Gemini, Groq, Ollama |
-| Anthropic | Claude API |
-
-Configuration is stored in localStorage — nothing is sent to any server. API requests go directly from the browser.
 
 ---
 

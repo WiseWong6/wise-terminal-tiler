@@ -43,7 +43,6 @@
 - 📊 **Mermaid 图表导出** SVG / PNG（PNG 自动放大到 2500px 宽，白底）
 - 🔒 **HTML 沙盒渲染** —— 完整 HTML 文档在 iframe 中渲染，带样式隔离
 - 🎨 **内置 6 个示例** —— Mixed / Markdown / HTML / JSON / Flowchart / Sequence 一键切换
-- 🤖 **AI 修复** —— 写错了让 AI 帮你修，支持自定义 API 提供商
 
 ---
 
@@ -116,21 +115,6 @@ npm run dev
 ### HTML
 
 检测到完整 HTML 文档（以 `<!DOCTYPE html>` 或 `<html` 开头）时，在 iframe 沙盒中渲染，带完整样式支持。
-
----
-
-## AI 修复
-
-当预览出现语法错误时，编辑器会显示错误信息和「Fix with AI」按钮。点击后会把当前代码和错误信息发给你配置的 AI 提供商，返回修复后的代码。
-
-点击右上角齿轮图标配置 AI：
-
-| 提供商类型 | 支持的服务 |
-|-----------|-----------|
-| OpenAI 兼容 | OpenAI、DeepSeek、Gemini、Groq、Ollama |
-| Anthropic | Claude API |
-
-配置存在 localStorage，不会发送到任何服务器。API 请求直接从浏览器发出。
 
 ---
 

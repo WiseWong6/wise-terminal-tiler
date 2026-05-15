@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Code, Coffee, Github, Layers } from 'lucide-react';
 import Editor from './components/Editor';
 import MixedPreview from './components/MixedPreview';
-import AISettingsModal from './components/AISettingsModal';
 import AboutModal from './components/AboutModal';
 import { useDebounce } from './hooks/useDebounce';
 import {
@@ -12,8 +11,6 @@ import {
   SAMPLE_MARKDOWN,
   SAMPLE_HTML,
 } from './constants';
-import { AIConfig } from './types/ai-config';
-import { loadAIConfig, saveAIConfig, fixCodeWithAI } from './services/ai-service';
 
 const MIN_SIDEBAR_WIDTH = 280;
 const DEFAULT_SIDEBAR_WIDTH = 420;
@@ -27,9 +24,6 @@ const App: React.FC = () => {
     }
     return DEFAULT_SIDEBAR_WIDTH;
   });
-  const [isFixing, setIsFixing] = useState(false);
-  const [aiConfig, setAiConfig] = useState<AIConfig | null>(() => loadAIConfig());
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
   const [activeSample, setActiveSample] = useState<string>('Mixed');
@@ -92,41 +86,6 @@ const App: React.FC = () => {
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isSampleMenuOpen]);
-
-  const handleSaveAIConfig = (config: AIConfig) => {
-    saveAIConfig(config);
-    setAiConfig(config);
-  };
-
-  const handleFixCode = async () => {
-    if (!code || !error || isFixing) return;
-
-    if (!aiConfig) {
-      setIsSettingsOpen(true);
-      return;
-    }
-
-    setIsFixing(true);
-    try {
-      let fixedCode = await fixCodeWithAI(aiConfig, code, error);
-
-      if (
-        fixedCode.startsWith('```') &&
-        fixedCode.endsWith('```') &&
-        !code.trim().startsWith('```')
-      ) {
-        fixedCode = fixedCode.replace(/^```[a-z]*\n/, '').replace(/\n```$/, '');
-      }
-
-      if (fixedCode) {
-        setCode(fixedCode);
-      }
-    } catch (err) {
-      console.error('Failed to fix code:', err);
-    } finally {
-      setIsFixing(false);
-    }
-  };
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
@@ -210,8 +169,6 @@ const App: React.FC = () => {
             value={code}
             onChange={setCode}
             error={error}
-            onFix={handleFixCode}
-            isFixing={isFixing}
           />
         </div>
 
@@ -227,13 +184,6 @@ const App: React.FC = () => {
           <MixedPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} onToggleSidebar={toggleSidebar} />
         </div>
       </main>
-
-      <AISettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        onSave={handleSaveAIConfig}
-        initialConfig={aiConfig}
-      />
 
       <AboutModal
         isOpen={isAboutOpen}
