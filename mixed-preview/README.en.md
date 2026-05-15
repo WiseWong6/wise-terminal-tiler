@@ -1,4 +1,4 @@
-# mixed-preview
+# Mixed Preview
 
 <p align="center">
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
@@ -40,7 +40,10 @@ Edit on the left, live render on the right:
 - Auto-detects content type: paste raw JSON or raw Mermaid syntax directly, no need to wrap in fences
 - Export Mermaid diagrams as SVG or PNG (PNG auto-scales to 2500px wide, white background)
 - Full HTML documents render in a sandboxed iframe with style isolation
-- 6 built-in sample contents, one-click switch: Mixed / Markdown / HTML / JSON / Flowchart / Sequence
+- Rich copy to clipboard — rendered content (with Mermaid diagrams as inline images) can be pasted directly into WeChat article editor, auto-fitted to 677px width
+- Screenshot capture — one-click export of preview area or HTML iframe content as PNG images
+- Zoom & pan — Mermaid diagrams support scaling and drag-to-pan navigation
+- 7 built-in sample contents, one-click switch: Mixed / Markdown / HTML / JSON / Flowchart / Sequence / Class Diagram
 
 ## Quick Start
 
@@ -148,13 +151,15 @@ npm run format       # Format with Prettier
 - Mix Markdown, HTML, JSON, and Mermaid in one editor with live preview
 - Auto-detect content type — no manual selection needed
 - High-resolution diagram export (SVG / PNG)
-- Optional AI-assisted code fixing
+- Rich copy to clipboard (WeChat-optimized 677px width)
+- Screenshot capture for previews and iframe contents
+- Zoom & pan for Mermaid diagrams
 
 **It doesn't**
-- Not a collaborative editor (no real-time multi-user editing)
-- Not a file manager (single editor pane, no multi-file management)
-- No persistent storage (content resets to sample on page refresh)
-- Not an IDE (no file tree, terminal, or Git integration)
+- Collaborative editing (no real-time multi-user editing)
+- File management (single editor pane, no multi-file management)
+- Persistent storage (content resets to sample on page refresh)
+- IDE features (no file tree, terminal, or Git integration)
 
 ---
 

@@ -42,7 +42,10 @@
 - 🎯 **自动检测内容类型** —— 纯 JSON 直接贴进去能渲染，纯 Mermaid 语法也行
 - 📊 **Mermaid 图表导出** SVG / PNG（PNG 自动放大到 2500px 宽，白底）
 - 🔒 **HTML 沙盒渲染** —— 完整 HTML 文档在 iframe 中渲染，带样式隔离
-- 🎨 **内置 6 个示例** —— Mixed / Markdown / HTML / JSON / Flowchart / Sequence 一键切换
+- 📋 **富文本复制到剪贴板** —— 渲染后的内容（含 Mermaid 图表转内联图片）可直接粘贴到微信文章编辑器，自动适配 677px 宽度
+- 📸 **截图捕获** —— 一键将预览区或 HTML iframe 内容导出为 PNG 图片
+- 🔍 **缩放 & 拖拽查看** —— Mermaid 图表支持缩放和平移浏览
+- 🎨 **内置 7 个示例** —— Mixed / Markdown / HTML / JSON / Flowchart / Sequence / Class Diagram 一键切换
 
 ---
 
