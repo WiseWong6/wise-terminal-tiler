@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Code, Coffee, Github, Layers } from 'lucide-react';
+import { Code, Coffee, Github, Layers, Home } from 'lucide-react';
 import Editor from './components/Editor';
 import MixedPreview from './components/MixedPreview';
 import AboutModal from './components/AboutModal';
@@ -27,6 +27,7 @@ const App: React.FC = () => {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
   const [activeSample, setActiveSample] = useState<string>('Mixed');
+
   const isDragging = useRef(false);
   const sampleMenuRef = useRef<HTMLDivElement>(null);
 
@@ -88,10 +89,20 @@ const App: React.FC = () => {
   }, [isSampleMenuOpen]);
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 text-slate-900">
+    <div className="flex h-screen min-h-0 w-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200 shrink-0">
         <div className="flex items-center space-x-3">
+          <a
+            href="https://wisewong.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="返回主站"
+            aria-label="返回主站"
+            className="flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+          >
+            <Home size={18} />
+          </a>
           <div className="bg-indigo-600 p-1.5 rounded-lg">
             <Code className="text-white w-5 h-5" />
           </div>
@@ -162,7 +173,7 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
         <div
-          className="flex-shrink-0 overflow-hidden"
+          className="flex h-full min-h-0 flex-shrink-0 flex-col overflow-hidden"
           style={{ width: isCollapsed ? 0 : sidebarWidth }}
         >
           <Editor
@@ -180,7 +191,7 @@ const App: React.FC = () => {
           onMouseDown={startDrag}
         />
 
-        <div className="flex-1 h-full min-w-0 bg-slate-50">
+        <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-50">
           <MixedPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} onToggleSidebar={toggleSidebar} />
         </div>
       </main>

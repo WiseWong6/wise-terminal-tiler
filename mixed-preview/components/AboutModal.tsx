@@ -26,9 +26,9 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto">
+      <div className="relative bg-slate-50 rounded-xl shadow-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
+        <div className="sticky top-0 bg-slate-50 px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">关于 Mixed Preview</h2>
           <button
             onClick={onClose}
@@ -43,7 +43,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           {/* 解决的问题 */}
           <section>
             <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-3">
-              解决什么问题
+              解决的问题
             </h3>
             <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
               <li className="flex gap-2">
@@ -107,7 +107,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-slate-200">
+        <div className="sticky bottom-0 bg-slate-50 px-6 py-4 border-t border-slate-200">
           <button
             onClick={onClose}
             className="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"

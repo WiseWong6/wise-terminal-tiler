@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Maximize2,
   Camera,
+  Loader2,
 } from 'lucide-react';
 import ZoomableWrapper from './ZoomableWrapper';
 import JSON5 from 'json5';
@@ -43,7 +44,7 @@ const ZoomControls: React.FC<{
   onReset: () => void;
   onFit?: () => void;
 }> = ({ scale, onZoomIn, onZoomOut, onReset, onFit }) => (
-  <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md px-2 py-1.5">
+  <div className="flex items-center gap-1 bg-slate-100/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md px-2 py-1.5">
     <button
       onClick={onZoomIn}
       disabled={scale >= 3}
@@ -1531,8 +1532,14 @@ const MermaidDiagram: React.FC<{
               /viewBox="[^"]*"/,
               `viewBox="${vbX} ${vbY - pad} ${vbW} ${vbH + pad * 2}"`,
             );
-            const renderWidth = Math.round(vbW * 0.79);
-            cleanedSvg = cleanedSvg.replace(/width="[^"]*"/, `width="${renderWidth}px"`);
+            cleanedSvg = cleanedSvg.replace(
+              /width="[^"]*"/,
+              `width="100%"`,
+            );
+            cleanedSvg = cleanedSvg.replace(
+              /<svg /,
+              `<svg style="height:auto;" `,
+            );
           }
           setSvgContent(cleanedSvg);
           setError(null);
@@ -1544,7 +1551,15 @@ const MermaidDiagram: React.FC<{
         }
       }
     };
-    renderDiagram();
+    // Defer Mermaid rendering to yield main thread for loading animation
+    const scheduleRender = () => {
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => renderDiagram(), { timeout: 300 });
+      } else {
+        window.setTimeout(renderDiagram, 0);
+      }
+    };
+    scheduleRender();
     return () => {
       isMounted = false;
     };
@@ -1740,12 +1755,14 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   const [copiedImages, setCopiedImages] = useState(false);
   const [copiedScreenshot, setCopiedScreenshot] = useState(false);
   const [mermaidCount, setMermaidCount] = useState(0);
+  const [isRendering, setIsRendering] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const savedScrollRatio = useRef(0);
   const naturalContentWidthRef = useRef(0);
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
+  const renderTimeoutRef = useRef<number | null>(null);
 
   const contentType = detectContentType(code);
   const mermaidSvgRef = useRef<string>('');
@@ -1820,6 +1837,28 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
 
   const processedCode = preprocessCode(code);
 
+  // Show loading immediately when content changes, hide after render settles
+  useEffect(() => {
+    setIsRendering(true);
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current);
+    }
+    // Allow browser to paint loading state before heavy rendering
+    renderTimeoutRef.current = window.setTimeout(() => {
+      // Double rAF to ensure React has painted content
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setIsRendering(false);
+        });
+      });
+    }, 80);
+    return () => {
+      if (renderTimeoutRef.current) {
+        clearTimeout(renderTimeoutRef.current);
+      }
+    };
+  }, [processedCode]);
+
   // We clear global error because individual blocks handle their own errors
   useEffect(() => {
     onError(null);
@@ -1873,44 +1912,45 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     setScale(target);
   }, [setScale]);
 
-  // Auto-fit on content change: poll until content width stabilizes (handles async Mermaid)
+  // Auto-fit on content change using ResizeObserver (handles async Mermaid)
   useEffect(() => {
     setScale(1);
     naturalContentWidthRef.current = 0;
 
-    let attempts = 0;
-    let lastWidth = 0;
-    let stableCount = 0;
-    let timeoutId: ReturnType<typeof setTimeout>;
+    const content = previewRef.current;
+    const el = scrollContainerRef.current;
+    if (!content || !el) return;
 
-    const check = () => {
-      const el = scrollContainerRef.current;
-      const content = previewRef.current;
-      if (!el || !content || attempts >= 12) return;
-      attempts++;
+    let stableTimer: ReturnType<typeof setTimeout>;
+
+    const applyFit = () => {
       const w = content.scrollWidth;
-      if (w > 0 && w === lastWidth) {
-        stableCount++;
-        if (stableCount >= 2) {
-          const viewWidth = el.clientWidth - 64;
-          const target = viewWidth / w;
-          if (target < 1 && target > 0.2) {
-            savedScrollRatio.current = 0;
-            setScale(target);
-          }
-          naturalContentWidthRef.current = w;
-          return;
-        }
-      } else {
-        stableCount = 0;
-        lastWidth = w;
+      if (w <= 0) return;
+      const viewWidth = el.clientWidth - 64;
+      const target = viewWidth / w;
+      if (target < 1 && target > 0.2) {
+        savedScrollRatio.current = 0;
+        setScale(target);
       }
-      timeoutId = setTimeout(check, 300);
+      naturalContentWidthRef.current = w;
     };
 
-    timeoutId = setTimeout(check, 100);
+    const ro = new ResizeObserver(() => {
+      clearTimeout(stableTimer);
+      stableTimer = setTimeout(applyFit, 150);
+    });
 
-    return () => clearTimeout(timeoutId);
+    ro.observe(content);
+    // Also observe the scroll container in case sidebar toggle changes available width
+    ro.observe(el);
+
+    // Initial attempt after a short delay for Mermaid async content
+    stableTimer = setTimeout(applyFit, 250);
+
+    return () => {
+      clearTimeout(stableTimer);
+      ro.disconnect();
+    };
   }, [processedCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopy = async () => {
@@ -2056,10 +2096,9 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
       <div
-        className="flex items-center justify-between px-4 bg-slate-50 border-b border-slate-200 z-10 shrink-0 shadow-sm"
-        style={{ minHeight: '45px' }}
+        className="flex h-12 shrink-0 items-center justify-between px-4 bg-slate-100 border-b border-slate-200 z-10 shadow-sm"
       >
         <div className="flex items-center space-x-3">
           {onToggleSidebar && (
@@ -2147,14 +2186,18 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
       </div>
       <div
         ref={scrollContainerRef}
-        className="relative overflow-auto"
-        style={{ height: 'calc(100% - 45px)' }}
+        className="relative min-h-0 flex-1 overflow-auto"
       >
-        <div className="w-full h-full p-8">
+        {isRendering && processedCode && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm transition-opacity">
+            <Loader2 size={28} className="animate-spin text-indigo-600 mb-3" />
+            <span className="text-sm text-slate-500 font-medium">渲染中...</span>
+          </div>
+        )}
+        <div className="min-h-full w-full p-8">
           <div
             ref={previewRef}
-            className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-slate-200 prose prose-slate max-w-none prose-strong:font-bold prose-strong:text-slate-900"
-            style={{ minWidth: '760px' }}
+            className="prose prose-slate w-full max-w-none overflow-x-auto rounded-xl border border-slate-200 bg-white p-8 shadow-sm prose-strong:font-bold prose-strong:text-slate-900"
           >
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
