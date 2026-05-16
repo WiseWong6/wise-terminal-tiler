@@ -127,8 +127,6 @@ npm run dev
 - 一个编辑器里混合写 Markdown、HTML、JSON、Mermaid，实时预览
 - 自动检测内容类型，不需要手动指定
 - 高分辨率图表导出（SVG / PNG）
-- 可选的 AI 辅助修复
-
 **它不做**
 - 不是协作编辑器（没有多人实时协作）
 - 不是文件管理器（只有一个编辑区，不管理多个文件）
@@ -162,6 +160,37 @@ npm run preview      # 预览生产构建
 npm run lint         # ESLint 检查
 npm run format       # Prettier 格式化
 ```
+
+---
+
+## 发布与 Website 同步
+
+`mixed-preview` 的源码以本仓库为唯一源头：日常开发只改 `wise-labs/mixed-preview`。网站仓库 `WiseWong6/website` 只保存构建后的产物，线上入口 `/mixed-preview/` 实际访问的是 `website/mixed-preview/index.html` 和 `website/mixed-preview/assets/**`。
+
+正常发布流程：
+
+```bash
+cd wise-labs/mixed-preview
+npm run build
+
+cd ..
+git add mixed-preview
+git commit -m "fix(mixed-preview): ..."
+git push origin main
+```
+
+推送到 `wise-labs/main` 后，GitHub Actions 的 `Sync Mixed Preview to Website` workflow 会自动：
+
+1. 安装 `mixed-preview` 依赖
+2. 执行 `npm run build`
+3. 把 `mixed-preview/dist/index.html` 和 `mixed-preview/dist/assets/**` 同步提交到 `WiseWong6/website` 的 `mixed-preview/` 目录
+
+不要手动修改本地 `website/mixed-preview/` 作为常规发布方式。本地的 `website/` 是独立仓库，可能有其他未提交内容；直接覆盖会让源码和线上产物漂移。只有在 Actions 失败且必须紧急热修时，才手动复制 `dist` 产物并在 `website` 仓库里单独提交 `mixed-preview/`。
+
+同步是否成功可以看两处：
+
+- `WiseWong6/wise-labs` 的 Actions：`Sync Mixed Preview to Website` 是否成功
+- `WiseWong6/website` 是否出现 `chore: sync mixed-preview from wise-labs` 提交
 
 ---
 
