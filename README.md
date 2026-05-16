@@ -83,6 +83,8 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 5 个独立
 - 🔒 HTML 在 iframe 沙盒中渲染
 - 📋 富文本复制到剪贴板（针对微信文章优化 677px 宽度）
 - 📸 截图捕获（预览区 / iframe 内容导出 PNG）
+- 🔍 缩放 & 拖拽查看 —— Mermaid 图表支持缩放和平移浏览
+- 🌙 暗色模式 —— 支持系统偏好、localStorage 持久化、iframe 跨窗口同步
 
 **Tech Stack:** React 19, Vite, Mermaid, react-markdown, html2canvas, json5, react-syntax-highlighter, lucide-react, Tailwind CSS
 
