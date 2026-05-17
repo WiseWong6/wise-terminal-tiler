@@ -114,11 +114,139 @@
 
       [data-theme="dark"] body,
       [data-theme="dark"] .bg-white { background-color: #111113 !important; }
+
+      /* === Skeleton loading screen === */
+      .skeleton-app {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+      }
+      .skeleton-header {
+        height: 56px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 0 16px;
+        border-bottom: 1px solid #d9d6cc;
+        background: #f5f5f0;
+        flex-shrink: 0;
+      }
+      [data-theme="dark"] .skeleton-header {
+        border-color: #3a3a3c;
+        background: #111113;
+      }
+      .skeleton-body {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #f5f5f0;
+      }
+      @media (min-width: 768px) {
+        .skeleton-body {
+          flex-direction: row;
+        }
+      }
+      [data-theme="dark"] .skeleton-body {
+        background: #111113;
+      }
+      .skeleton-editor {
+        flex: 1;
+        padding: 20px;
+        border-bottom: 1px solid #d9d6cc;
+        border-right: none;
+        background: #f5f5f0;
+        overflow: hidden;
+      }
+      @media (min-width: 768px) {
+        .skeleton-editor {
+          border-bottom: none;
+          border-right: 1px solid #d9d6cc;
+        }
+      }
+      [data-theme="dark"] .skeleton-editor {
+        border-color: #3a3a3c;
+        background: #111113;
+      }
+      .skeleton-preview {
+        flex: 1;
+        padding: 20px;
+        background: #f5f5f0;
+        overflow: hidden;
+      }
+      [data-theme="dark"] .skeleton-preview {
+        background: #111113;
+      }
+      .skeleton-bar {
+        background: linear-gradient(90deg, #a19b8c 25%, #d9d6cc 50%, #a19b8c 75%);
+        background-size: 200% 100%;
+        animation: skeleton-shimmer 1.5s ease-in-out infinite;
+        border-radius: 4px;
+      }
+      [data-theme="dark"] .skeleton-bar {
+        background: linear-gradient(90deg, #2c2c2e 25%, #3a3a3c 50%, #2c2c2e 75%);
+        background-size: 200% 100%;
+      }
+      @keyframes skeleton-shimmer {
+        0% { background-position: 200% 0; }
+        100% { background-position: -200% 0; }
+      }
     </style>
   <link rel="stylesheet" href="/index.css">
 </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="skeleton-app">
+        <div class="skeleton-header">
+          <div class="skeleton-bar" style="width:32px;height:32px;border-radius:8px;"></div>
+          <div style="flex:1;"></div>
+          <div>
+            <div class="skeleton-bar" style="width:140px;height:18px;margin-bottom:4px;"></div>
+            <div class="skeleton-bar" style="width:200px;height:12px;"></div>
+          </div>
+          <div style="flex:1;"></div>
+          <div class="skeleton-bar" style="width:32px;height:32px;border-radius:8px;"></div>
+          <div class="skeleton-bar" style="width:32px;height:32px;border-radius:8px;"></div>
+          <div class="skeleton-bar" style="width:32px;height:32px;border-radius:8px;"></div>
+        </div>
+        <div class="skeleton-body">
+          <div class="skeleton-editor">
+            <div style="display:flex;gap:8px;margin-bottom:16px;">
+              <div class="skeleton-bar" style="width:60px;height:28px;border-radius:6px;"></div>
+              <div class="skeleton-bar" style="width:60px;height:28px;border-radius:6px;"></div>
+            </div>
+            <div class="skeleton-bar" style="width:55%;height:14px;margin-bottom:10px;"></div>
+            <div class="skeleton-bar" style="width:90%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:85%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:92%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:60%;height:12px;margin-bottom:16px;"></div>
+            <div class="skeleton-bar" style="width:100%;height:100px;border-radius:8px;margin-bottom:16px;"></div>
+            <div class="skeleton-bar" style="width:45%;height:14px;margin-bottom:10px;"></div>
+            <div class="skeleton-bar" style="width:90%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:80%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:88%;height:12px;margin-bottom:8px;"></div>
+          </div>
+          <div class="skeleton-preview">
+            <div style="display:flex;gap:8px;margin-bottom:16px;justify-content:flex-end;">
+              <div class="skeleton-bar" style="width:28px;height:28px;border-radius:6px;"></div>
+              <div class="skeleton-bar" style="width:28px;height:28px;border-radius:6px;"></div>
+              <div class="skeleton-bar" style="width:28px;height:28px;border-radius:6px;"></div>
+              <div class="skeleton-bar" style="width:80px;height:28px;border-radius:6px;"></div>
+            </div>
+            <div class="skeleton-bar" style="width:65%;height:26px;margin-bottom:14px;border-radius:4px;"></div>
+            <div class="skeleton-bar" style="width:100%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:95%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:90%;height:12px;margin-bottom:16px;"></div>
+            <div class="skeleton-bar" style="width:100%;height:80px;border-radius:8px;margin-bottom:16px;"></div>
+            <div class="skeleton-bar" style="width:50%;height:20px;margin-bottom:12px;border-radius:4px;"></div>
+            <div class="skeleton-bar" style="width:100%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:85%;height:12px;margin-bottom:8px;"></div>
+            <div class="skeleton-bar" style="width:92%;height:12px;margin-bottom:8px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
   <script type="module" src="/index.tsx"></script>
   <script>
     (function() {
