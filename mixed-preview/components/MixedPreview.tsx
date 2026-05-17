@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback, useLayoutEffect, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -16,7 +16,6 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  Maximize2,
   Camera,
   Loader2,
 } from 'lucide-react';
@@ -48,65 +47,6 @@ interface MixedPreviewProps {
   isMobile?: boolean;
   onToggleSidebar?: () => void;
 }
-
-// Reusable zoom controls
-const ZoomControls: React.FC<{
-  scale: number;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onReset: () => void;
-  onFit?: () => void;
-}> = ({ scale, onZoomIn, onZoomOut, onReset, onFit }) => (
-  <div className="flex items-center gap-1 bg-slate-100/90 backdrop-blur-sm border border-slate-200 rounded-lg shadow-md px-2 py-1.5">
-    <button
-      onClick={onZoomIn}
-      disabled={scale >= 3}
-      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-800"
-      title="放大"
-    >
-      <ZoomIn size={14} />
-    </button>
-    <button
-      onClick={onZoomOut}
-      disabled={scale <= 0.5}
-      className="p-1 rounded hover:bg-slate-100 disabled:opacity-30 transition-colors text-slate-800"
-      title="缩小"
-    >
-      <ZoomOut size={14} />
-    </button>
-    <button
-      onClick={onReset}
-      className="p-1 rounded hover:bg-slate-100 transition-colors text-slate-800"
-      title="重置"
-    >
-      <RotateCcw size={12} />
-    </button>
-    {onFit && (
-      <button
-        onClick={onFit}
-        className="p-1 rounded hover:bg-slate-100 transition-colors text-slate-800"
-        title="适配"
-      >
-        <Maximize2 size={12} />
-      </button>
-    )}
-    <span className="hidden md:inline text-xs text-slate-800 font-mono min-w-[36px] text-center">
-      {Math.round(scale * 100)}%
-    </span>
-  </div>
-);
-
-const useZoom = () => {
-  const [scale, setScale] = useState(1);
-  const clamp = (v: number) => Math.max(0.5, Math.min(3, v));
-  return {
-    scale,
-    zoomIn: () => setScale((s) => clamp(s + 0.1)),
-    zoomOut: () => setScale((s) => clamp(s - 0.1)),
-    reset: () => setScale(1),
-    setScale: (v: number) => setScale(clamp(v)),
-  };
-};
 
 type ContentType = 'markdown' | 'json' | 'html' | 'mermaid' | 'mixed';
 
@@ -1518,14 +1458,15 @@ const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPay
   };
 };
 
-// A component to render a single Mermaid diagram
+// A component to render a single Mermaid diagram with independent zoom controls
 const MermaidDiagram: React.FC<{
   code: string;
-  scale: number;
   onSvgReady?: (svg: string) => void;
-}> = ({ code, scale, onSvgReady }) => {
+}> = ({ code, onSvgReady }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [scale, setScale] = useState(1);
+  const clampScale = (v: number) => Math.max(0.5, Math.min(3, v));
 
   useEffect(() => {
     let isMounted = true;
@@ -1624,9 +1565,37 @@ const MermaidDiagram: React.FC<{
       data-copy-role="mermaid-block"
     >
       <div
-        className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-end"
+        className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between"
         data-copy-remove="true"
       >
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setScale((s) => clampScale(s + 0.1))}
+            disabled={scale >= 3}
+            className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 transition-colors text-slate-700"
+            title="放大"
+          >
+            <ZoomIn size={14} />
+          </button>
+          <button
+            onClick={() => setScale((s) => clampScale(s - 0.1))}
+            disabled={scale <= 0.5}
+            className="p-1 rounded hover:bg-slate-200 disabled:opacity-30 transition-colors text-slate-700"
+            title="缩小"
+          >
+            <ZoomOut size={14} />
+          </button>
+          <button
+            onClick={() => setScale(1)}
+            className="p-1 rounded hover:bg-slate-200 transition-colors text-slate-700"
+            title="重置"
+          >
+            <RotateCcw size={12} />
+          </button>
+          <span className="text-xs text-slate-600 font-mono min-w-[36px] text-center">
+            {Math.round(scale * 100)}%
+          </span>
+        </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={handleDownloadSVG}
@@ -1677,13 +1646,14 @@ const JsonViewer: React.FC<{ code: string; onFormatted?: (formatted: string) => 
   if (error) {
     return (
       <div className="my-4">
-        <div className="p-2 bg-red-50 text-red-700 font-mono text-xs rounded-t border border-red-200 border-b-0">
+        <div className="p-2 bg-red-50 text-red-700 font-mono text-sm rounded-t border border-red-200 border-b-0">
           JSON Parse Error: {error}
         </div>
         <SyntaxHighlighter
           language="json"
           style={vscDarkPlus}
           className="!m-0 !rounded-t-none !rounded-b"
+          customStyle={{ fontSize: '14px' }}
           wrapLongLines
         >
           {code}
@@ -1695,12 +1665,18 @@ const JsonViewer: React.FC<{ code: string; onFormatted?: (formatted: string) => 
   return (
     <div className="my-4 rounded border border-slate-200 shadow-sm" data-copy-role="json-block">
       <div
-        className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex items-center"
+        className="bg-slate-800 px-4 py-1 text-sm text-slate-400 font-mono flex items-center"
         data-copy-remove="true"
       >
         <span>JSON</span>
       </div>
-      <SyntaxHighlighter language="json" style={vscDarkPlus} className="!m-0 !rounded-none" wrapLongLines>
+      <SyntaxHighlighter
+        language="json"
+        style={vscDarkPlus}
+        className="!m-0 !rounded-none"
+        customStyle={{ fontSize: '14px' }}
+        wrapLongLines
+      >
         {formatted}
       </SyntaxHighlighter>
     </div>
@@ -1785,7 +1761,7 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
       data-copy-role="html-preview"
     >
       <div
-        className="bg-slate-800 px-4 py-1 text-xs text-slate-400 font-mono flex items-center shrink-0"
+        className="bg-slate-800 px-4 py-1 text-sm text-slate-400 font-mono flex items-center shrink-0"
         data-copy-remove="true"
       >
         <span>HTML Preview</span>
@@ -1807,7 +1783,6 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   isMobile,
   onToggleSidebar,
 }) => {
-  const { scale, zoomIn, zoomOut, reset, setScale } = useZoom();
   const [copied, setCopied] = useState(false);
   const [copiedImages, setCopiedImages] = useState(false);
   const [copiedScreenshot, setCopiedScreenshot] = useState(false);
@@ -1815,10 +1790,6 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   const [isRendering, setIsRendering] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const savedScrollRatio = useRef(0);
-  const naturalContentWidthRef = useRef(0);
-  const scaleRef = useRef(scale);
-  scaleRef.current = scale;
 
   const contentType = detectContentType(code);
   const mermaidSvgRef = useRef<string>('');
@@ -1931,84 +1902,6 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [processedCode, refreshMermaidCount]);
-
-  // Restore scroll position after scale changes
-  useLayoutEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const maxScroll = el.scrollHeight - el.clientHeight;
-    if (maxScroll <= 0) return;
-    el.scrollTop = Math.min(savedScrollRatio.current * maxScroll, maxScroll);
-  }, [scale]);
-
-  // Persist scroll ratio on any scroll
-  useLayoutEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const onScroll = () => {
-      const maxScroll = el.scrollHeight - el.clientHeight;
-      if (maxScroll > 0) {
-        savedScrollRatio.current = el.scrollTop / maxScroll;
-      }
-    };
-    el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const handleFit = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const content = previewRef.current;
-    if (!content) return;
-    const paddingX = 64; // p-8 = 2rem * 2 sides
-    const viewWidth = el.clientWidth - paddingX;
-    const contentWidth = naturalContentWidthRef.current || content.scrollWidth;
-    if (contentWidth <= 0 || viewWidth <= 0) return;
-    const target = viewWidth / contentWidth;
-    savedScrollRatio.current = 0;
-    setScale(target);
-  }, [setScale]);
-
-  // Auto-fit on content change using ResizeObserver (handles async Mermaid)
-  useEffect(() => {
-    setScale(1);
-    naturalContentWidthRef.current = 0;
-
-    const content = previewRef.current;
-    const el = scrollContainerRef.current;
-    if (!content || !el) return;
-
-    let stableTimer: ReturnType<typeof setTimeout>;
-
-    const applyFit = () => {
-      const w = content.scrollWidth;
-      if (w <= 0) return;
-      const viewWidth = el.clientWidth - 64;
-      const target = viewWidth / w;
-      if (target < 1 && target > 0.2) {
-        savedScrollRatio.current = 0;
-        setScale(target);
-      }
-      naturalContentWidthRef.current = w;
-    };
-
-    const ro = new ResizeObserver(() => {
-      clearTimeout(stableTimer);
-      stableTimer = setTimeout(applyFit, 150);
-    });
-
-    ro.observe(content);
-    // Also observe the scroll container in case sidebar toggle changes available width
-    ro.observe(el);
-
-    // Initial attempt after a short delay for Mermaid async content
-    stableTimer = setTimeout(applyFit, 250);
-
-    return () => {
-      clearTimeout(stableTimer);
-      ro.disconnect();
-    };
-  }, [processedCode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCopy = async () => {
     if (!code.trim()) return;
@@ -2172,13 +2065,6 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
           <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
             Preview
           </span>
-          <ZoomControls
-            scale={scale}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            onReset={reset}
-            onFit={handleFit}
-          />
         </div>
         <div className="flex items-center gap-2">
           {canCopyRichText && (
@@ -2284,7 +2170,6 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
                       return (
                         <MermaidDiagram
                           code={content}
-                          scale={scale}
                           onSvgReady={(svg) => {
                             mermaidSvgRef.current = svg;
                             refreshMermaidCount();
@@ -2328,7 +2213,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
                     );
                   },
                 }),
-                [refreshMermaidCount, scale],
+                [refreshMermaidCount],
               )}
             >
               {processedCode}

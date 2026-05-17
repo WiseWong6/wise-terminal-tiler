@@ -118,7 +118,7 @@ const App: React.FC = () => {
         <div className="flex items-center space-x-3">
           {(!isInIframe || isMobile) && (
             <a
-              href="/"
+              href={isFromMainSite ? '/' : 'https://www.wisewong.com/'}
               onClick={(e) => {
                 if (isFromMainSite) {
                   e.preventDefault();
