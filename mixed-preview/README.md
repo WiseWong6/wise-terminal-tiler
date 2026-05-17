@@ -45,7 +45,7 @@
 - 📋 **富文本复制到剪贴板** —— 渲染后的内容（含 Mermaid 图表转内联图片）可直接粘贴到微信文章编辑器，自动适配 677px 宽度
 - 📸 **截图捕获** —— 一键将预览区或 HTML iframe 内容导出为 PNG 图片
 - 🔍 **缩放 & 拖拽查看** —— Mermaid 图表支持缩放和平移浏览
-- 🎨 **内置 7 个示例** —— Mixed / Markdown / HTML / JSON / Flowchart / Sequence / Class Diagram 一键切换
+- 🎨 **内置 5 个示例** —— Mixed / Markdown / HTML / JSON / Mermaid 一键切换
 
 ---
 

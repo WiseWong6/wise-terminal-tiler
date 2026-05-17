@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Coffee, Newspaper } from 'lucide-react';
 
 interface AboutModalProps {
@@ -7,8 +7,27 @@ interface AboutModalProps {
 }
 
 const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      setIsVisible(true);
+      requestAnimationFrame(() => setIsAnimating(true));
+    } else {
+      setIsAnimating(false);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen && isVisible) {
+      const timer = setTimeout(() => setIsVisible(false), 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, isVisible]);
+
+  useEffect(() => {
+    if (!isVisible) return;
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -19,14 +38,26 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isVisible, onClose]);
 
-  if (!isOpen) return null;
+  if (!isVisible) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-slate-50 rounded-xl shadow-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto">
+      <div
+        className="absolute inset-0 bg-black/40 transition-opacity duration-200"
+        style={{ opacity: isAnimating ? 1 : 0 }}
+        onClick={onClose}
+      />
+      <div
+        className="relative bg-slate-50 rounded-xl shadow-2xl w-full max-w-2xl mx-2 md:mx-4 max-h-[85vh] overflow-y-auto transition-all ease-out"
+        style={{
+          opacity: isAnimating ? 1 : 0,
+          transform: isAnimating ? 'scale(1) translateY(0)' : 'scale(0.95) translateY(12px)',
+          transitionDuration: '250ms',
+          pointerEvents: isAnimating ? 'auto' : 'none',
+        }}
+      >
         {/* Header */}
         <div className="sticky top-0 bg-slate-50 px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900">关于 Mixed Preview</h2>
@@ -76,9 +107,9 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   <Coffee size={14} className="text-indigo-600" />
                   请我喝咖啡
                 </h3>
-                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 overflow-hidden">
+                <div className="w-full aspect-square max-w-[220px] mx-auto rounded-xl border border-slate-200 overflow-hidden">
                   <img
-                    src="/reward.jpg"
+                    src="./reward.jpg"
                     alt="赞赏码"
                     className="w-full h-full object-cover"
                   />
@@ -91,9 +122,9 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   <Newspaper size={14} className="text-indigo-600" />
                   关注我
                 </h3>
-                <div className="w-full aspect-square max-w-[180px] mx-auto rounded-xl border border-slate-200 overflow-hidden">
+                <div className="w-full aspect-square max-w-[220px] mx-auto rounded-xl border border-slate-200 overflow-hidden">
                   <img
-                    src="/qrcode.jpg"
+                    src="./qrcode.jpg"
                     alt="公众号二维码"
                     className="w-full h-full object-cover"
                   />

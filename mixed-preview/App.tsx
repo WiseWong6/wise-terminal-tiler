@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Code, Coffee, Github, Layers, Home } from 'lucide-react';
+import { Code, Coffee, Github, Layers, ArrowLeft, Home } from 'lucide-react';
 import Editor from './components/Editor';
 import MixedPreview from './components/MixedPreview';
 import AboutModal from './components/AboutModal';
@@ -27,16 +27,38 @@ const App: React.FC = () => {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isSampleMenuOpen, setIsSampleMenuOpen] = useState(false);
   const [activeSample, setActiveSample] = useState<string>('Mixed');
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+  const [isMobileEditorCollapsed, setIsMobileEditorCollapsed] = useState(false);
 
+  const ref = typeof document !== 'undefined' ? document.referrer : '';
+  const host = typeof location !== 'undefined' ? location.hostname : '';
+  const isInternal = ref && (ref.includes(host) || ref.includes('wisewong.com') || ref.includes('localhost'));
+  const isInIframe = typeof window !== 'undefined' && window.parent !== window;
+  const isFromMainSite = isInternal || isInIframe;
   const isDragging = useRef(false);
   const sampleMenuRef = useRef<HTMLDivElement>(null);
 
   const [debouncedCode, flushCode] = useDebounce(code, 600);
 
-  const isCollapsed = sidebarWidth === 0;
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const isCollapsed = (!isMobile && sidebarWidth === 0) || (isMobile && isMobileEditorCollapsed);
 
   const toggleSidebar = useCallback(() => {
     setSidebarWidth(prev => prev === 0 ? DEFAULT_SIDEBAR_WIDTH : 0);
+  }, []);
+
+  const toggleMobileEditor = useCallback(() => {
+    setIsMobileEditorCollapsed(prev => !prev);
   }, []);
 
   const startDrag = useCallback((e: React.MouseEvent) => {
@@ -88,21 +110,34 @@ const App: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [isSampleMenuOpen]);
 
+
   return (
     <div className="flex h-screen min-h-0 w-screen flex-col overflow-hidden bg-slate-50 text-slate-900">
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200 shrink-0">
         <div className="flex items-center space-x-3">
-          <a
-            href="https://wisewong.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="返回主站"
-            aria-label="返回主站"
-            className="flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
-          >
-            <Home size={18} />
-          </a>
+          {(!isInIframe || isMobile) && (
+            <a
+              href="/"
+              onClick={(e) => {
+                if (isFromMainSite) {
+                  e.preventDefault();
+                  if (isInIframe) {
+                    window.parent.postMessage({ type: 'close-tab' }, '*');
+                  } else if (window.history.length > 1) {
+                    window.history.back();
+                  } else {
+                    window.location.href = '/';
+                  }
+                }
+              }}
+              title={isFromMainSite ? '返回' : '返回主站'}
+              aria-label={isFromMainSite ? '返回' : '返回主站'}
+              className="flex items-center justify-center w-8 h-8 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 transition-colors"
+            >
+              {isFromMainSite ? <ArrowLeft size={18} /> : <Home size={18} />}
+            </a>
+          )}
           <div className="bg-indigo-600 p-1.5 rounded-lg">
             <Code className="text-white w-5 h-5" />
           </div>
@@ -171,10 +206,10 @@ const App: React.FC = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex overflow-hidden">
+      <main className="flex flex-col md:flex-row min-h-0 flex-1 overflow-hidden">
         <div
-          className="flex h-full min-h-0 flex-shrink-0 flex-col overflow-hidden"
-          style={{ width: isCollapsed ? 0 : sidebarWidth }}
+          className={`flex ${isMobile && isMobileEditorCollapsed ? 'h-0' : 'h-[45vh]'} md:h-full min-h-0 flex-shrink-0 flex-col overflow-hidden`}
+          style={isMobile ? undefined : { width: isCollapsed ? 0 : sidebarWidth }}
         >
           <Editor
             value={code}
@@ -185,14 +220,14 @@ const App: React.FC = () => {
 
         {/* Drag handle */}
         <div
-          className={`relative flex-shrink-0 w-1 group cursor-col-resize transition-colors ${
+          className={`hidden md:block relative flex-shrink-0 w-1 group cursor-col-resize transition-colors ${
             isCollapsed ? 'bg-transparent' : 'bg-transparent hover:bg-indigo-400'
           }`}
           onMouseDown={startDrag}
         />
 
         <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-50">
-          <MixedPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} onToggleSidebar={toggleSidebar} />
+          <MixedPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} isMobile={isMobile} onToggleSidebar={isMobile ? toggleMobileEditor : toggleSidebar} />
         </div>
       </main>
 

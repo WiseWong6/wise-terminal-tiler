@@ -13,7 +13,7 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [isPanning, setIsPanning] = useState(false);
 
-  // Measure natural size once on mount / when children change
+  // Measure natural size on mount / when children change, and keep observing
   useEffect(() => {
     if (!contentRef.current) return;
     const measure = () => {
@@ -27,7 +27,14 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
     };
     measure();
     const timer = setTimeout(measure, 800);
-    return () => clearTimeout(timer);
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(contentRef.current);
+
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
   }, [children]);
 
   // Drag-to-pan using scrollLeft/scrollTop

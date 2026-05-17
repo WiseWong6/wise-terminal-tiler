@@ -1,6 +1,7 @@
 import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { viteSingleFile } from 'vite-plugin-singlefile';
 
 export default defineConfig({
   base: './',
@@ -10,15 +11,12 @@ export default defineConfig({
   },
   plugins: [
     react(),
-    {
-      name: 'file-protocol-fix',
-      transformIndexHtml(html, ctx) {
-        if (ctx.server) return html;
-        return html
-          .replace(/ crossorigin/g, '');
-      },
-    },
+    viteSingleFile(),
   ],
+  build: {
+    target: 'esnext',
+    cssCodeSplit: false,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

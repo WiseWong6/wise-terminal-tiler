@@ -4,13 +4,14 @@ import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import mermaid from 'mermaid';
 import {
   Download,
   Image as ImageIcon,
   Copy,
   Check,
   PanelLeftClose,
+  PanelTopClose,
+  PanelTopOpen,
   Sidebar,
   ZoomIn,
   ZoomOut,
@@ -22,17 +23,29 @@ import {
 import ZoomableWrapper from './ZoomableWrapper';
 import JSON5 from 'json5';
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'default',
-  securityLevel: 'loose',
-  fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
-});
+// Lazy-load mermaid to reduce initial bundle size
+let mermaidPromise: Promise<typeof import('mermaid').default> | null = null;
+
+const getMermaid = async () => {
+  if (!mermaidPromise) {
+    mermaidPromise = import('mermaid').then((mod) => {
+      mod.default.initialize({
+        startOnLoad: false,
+        theme: 'default',
+        securityLevel: 'loose',
+        fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
+      });
+      return mod.default;
+    });
+  }
+  return mermaidPromise;
+};
 
 interface MixedPreviewProps {
   code: string;
   onError: (error: string | null) => void;
   isCollapsed?: boolean;
+  isMobile?: boolean;
   onToggleSidebar?: () => void;
 }
 
@@ -77,7 +90,7 @@ const ZoomControls: React.FC<{
         <Maximize2 size={12} />
       </button>
     )}
-    <span className="text-xs text-slate-800 font-mono min-w-[36px] text-center">
+    <span className="hidden md:inline text-xs text-slate-800 font-mono min-w-[36px] text-center">
       {Math.round(scale * 100)}%
     </span>
   </div>
@@ -1518,6 +1531,7 @@ const MermaidDiagram: React.FC<{
     let isMounted = true;
     const renderDiagram = async () => {
       try {
+        const mermaid = await getMermaid();
         await mermaid.parse(code);
         const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
         const { svg } = await mermaid.render(id, code);
@@ -1616,7 +1630,7 @@ const MermaidDiagram: React.FC<{
         <div className="flex items-center space-x-2">
           <button
             onClick={handleDownloadSVG}
-            className="flex items-center space-x-1 px-2 py-1 bg-white hover:bg-slate-100 rounded text-xs text-slate-600 transition-colors border border-slate-200"
+            className="flex items-center space-x-1 px-2 py-1 bg-slate-50 hover:bg-slate-100 rounded text-xs text-slate-600 transition-colors border border-slate-200"
             title="Download SVG"
           >
             <Download size={14} />
@@ -1693,35 +1707,77 @@ const JsonViewer: React.FC<{ code: string; onFormatted?: (formatted: string) => 
   );
 };
 
-// A component to render HTML in an iframe
+// Script injected into HtmlPreview iframe to report content height via postMessage.
+// Uses a unique ID (replaced at injection time) so multiple previews on one page don't collide.
+const HEIGHT_REPORTER_SCRIPT = (id: string) => `
+<script>
+(function() {
+  var reportHeight = function() {
+    var body = document.body;
+    var html = document.documentElement;
+    if (!body || !html) return;
+    var h = Math.max(
+      body.scrollHeight, html.scrollHeight,
+      body.getBoundingClientRect().height,
+      html.getBoundingClientRect().height,
+      200
+    );
+    parent.postMessage({ type: 'html-preview-height', id: '${id}', height: h }, '*');
+  };
+  var ro = new ResizeObserver(reportHeight);
+  ro.observe(document.body);
+  ro.observe(document.documentElement);
+  reportHeight();
+  [100, 300, 800, 1500, 2500].forEach(function(ms) {
+    setTimeout(reportHeight, ms);
+  });
+})();
+</script>`;
+
+// Wrap user HTML with resource isolation
+const wrapHtmlPreview = (rawCode: string, id: string): string => {
+  const trimmed = rawCode.trim();
+  const hasDocType = /^<!doctype\s+html/i.test(trimmed);
+  const hasHtmlTag = /^<html[\s>]/i.test(trimmed);
+  const reporter = HEIGHT_REPORTER_SCRIPT(id);
+
+  if (hasDocType || hasHtmlTag) {
+    let result = trimmed;
+    if (/<head[\s>]/i.test(result)) {
+      result = result.replace(/(<head[^>]*>)/i, '$1<base href="about:blank">');
+    } else {
+      result = result.replace(/(<html[^>]*>)/i, '$1<head><base href="about:blank"></head>');
+    }
+    // Inject height reporter before </body>
+    if (/<\/body>/i.test(result)) {
+      result = result.replace(/<\/body>/i, reporter + '</body>');
+    } else {
+      result += reporter;
+    }
+    return result;
+  }
+
+  return `<!DOCTYPE html><html><head><base href="about:blank"><meta charset="UTF-8"></head><body>${rawCode}${reporter}</body></html>`;
+};
+
+// A component to render HTML in an isolated iframe.
+// Height is reported by the iframe content via postMessage — no contentDocument access needed,
+// so we can keep the sandbox restrictive (no allow-same-origin).
+// Each instance gets a stable random ID so multiple previews on one page don't collide.
 const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const id = useMemo(() => Math.random().toString(36).slice(2, 8), []);
   const [iframeHeight, setIframeHeight] = useState(400);
+  const wrappedCode = useMemo(() => wrapHtmlPreview(code, id), [code, id]);
 
   useEffect(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-
-    const adjustHeight = () => {
-      try {
-        const doc = iframe.contentDocument;
-        if (doc) {
-          const height = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight);
-          setIframeHeight(height);
-        }
-      } catch {
-        // fallback: keep default height
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === 'html-preview-height' && e.data.id === id && typeof e.data.height === 'number') {
+        setIframeHeight(Math.min(Math.ceil(e.data.height), 8000));
       }
     };
-
-    iframe.onload = adjustHeight;
-    const timer = setTimeout(adjustHeight, 500);
-    const timer2 = setTimeout(adjustHeight, 1000);
-    return () => {
-      clearTimeout(timer);
-      clearTimeout(timer2);
-    };
-  }, [code]);
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [id]);
 
   return (
     <div
@@ -1735,10 +1791,10 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
         <span>HTML Preview</span>
       </div>
       <iframe
-        ref={iframeRef}
-        srcDoc={code}
+        srcDoc={wrappedCode}
+        sandbox="allow-scripts allow-popups-to-escape-sandbox"
         className="w-full border-none bg-white"
-        style={{ minHeight: '200px', height: `${iframeHeight}px` }}
+        style={{ height: `${iframeHeight}px` }}
       />
     </div>
   );
@@ -1748,6 +1804,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   code,
   onError,
   isCollapsed = false,
+  isMobile,
   onToggleSidebar,
 }) => {
   const { scale, zoomIn, zoomOut, reset, setScale } = useZoom();
@@ -1762,11 +1819,11 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   const naturalContentWidthRef = useRef(0);
   const scaleRef = useRef(scale);
   scaleRef.current = scale;
-  const renderTimeoutRef = useRef<number | null>(null);
 
   const contentType = detectContentType(code);
   const mermaidSvgRef = useRef<string>('');
   const jsonFormattedRef = useRef<string>('');
+  const renderTimeoutRef = useRef<number | null>(null);
 
   const refreshMermaidCount = useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -2098,7 +2155,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
       <div
-        className="flex h-12 shrink-0 items-center justify-between px-4 bg-slate-100 border-b border-slate-200 z-10 shadow-sm"
+        className="flex h-12 shrink-0 items-center justify-between px-4 bg-slate-100 border-b border-slate-200 z-10 shadow-sm overflow-hidden"
       >
         <div className="flex items-center space-x-3">
           {onToggleSidebar && (
@@ -2107,7 +2164,9 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
               className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               title={isCollapsed ? '展开编辑器' : '收起编辑器'}
             >
-              {isCollapsed ? <Sidebar size={14} /> : <PanelLeftClose size={14} />}
+              {isMobile
+                ? (isCollapsed ? <PanelTopOpen size={14} /> : <PanelTopClose size={14} />)
+                : (isCollapsed ? <Sidebar size={14} /> : <PanelLeftClose size={14} />)}
             </button>
           )}
           <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
@@ -2129,12 +2188,12 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
               className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
                 copied
                   ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
               }`}
               title={copied ? '已复制' : copyLabel}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
-              <span>{copied ? '已复制' : copyLabel}</span>
+              <span className="hidden md:inline">{copied ? '已复制' : copyLabel}</span>
             </button>
           )}
           {contentType === 'mixed' && (
@@ -2149,7 +2208,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
               title={copiedImages ? '已复制图片' : '复制混合预览为图片'}
             >
               {copiedImages ? <Check size={14} /> : <Camera size={14} />}
-              <span>{copiedImages ? '已复制图片' : '复制图片'}</span>
+              <span className="hidden md:inline">{copiedImages ? '已复制图片' : '复制图片'}</span>
             </button>
           )}
           {contentType !== 'mixed' && mermaidCount > 0 && (
@@ -2164,7 +2223,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
               title={copiedImages ? '已复制图片' : `复制 ${mermaidCount} 张 Mermaid 图片`}
             >
               {copiedImages ? <Check size={14} /> : <ImageIcon size={14} />}
-              <span>{copiedImages ? '已复制图片' : '复制图片'}</span>
+              <span className="hidden md:inline">{copiedImages ? '已复制图片' : '复制图片'}</span>
             </button>
           )}
           {contentType === 'html' && (
@@ -2179,7 +2238,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
               title={copiedScreenshot ? '已复制图片' : '复制 HTML 页面为图片'}
             >
               {copiedScreenshot ? <Check size={14} /> : <Camera size={14} />}
-              <span>{copiedScreenshot ? '已复制图片' : '复制图片'}</span>
+              <span className="hidden md:inline">{copiedScreenshot ? '已复制图片' : '复制图片'}</span>
             </button>
           )}
         </div>
@@ -2194,7 +2253,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
             <span className="text-sm text-slate-500 font-medium">渲染中...</span>
           </div>
         )}
-        <div className="min-h-full w-full p-8">
+        <div className="w-full p-8">
           <div
             ref={previewRef}
             className="prose prose-slate w-full max-w-none overflow-x-auto rounded-xl border border-slate-200 bg-white p-8 shadow-sm prose-strong:font-bold prose-strong:text-slate-900"
@@ -2225,7 +2284,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
                       return (
                         <MermaidDiagram
                           code={content}
-                          scale={scaleRef.current}
+                          scale={scale}
                           onSvgReady={(svg) => {
                             mermaidSvgRef.current = svg;
                             refreshMermaidCount();
@@ -2269,7 +2328,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
                     );
                   },
                 }),
-                [refreshMermaidCount],
+                [refreshMermaidCount, scale],
               )}
             >
               {processedCode}
