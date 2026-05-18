@@ -1,3 +1,9 @@
+/* 防止微信浏览器/移动端水平滑动及滚动卡死 */
+html, body {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
 .mermaid-container {
   align-items: center;
   min-height: 430px;

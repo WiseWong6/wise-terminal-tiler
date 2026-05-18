@@ -6,6 +6,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
   Download,
+  FileDown,
+  ExternalLink,
   Image as ImageIcon,
   Copy,
   Check,
@@ -77,6 +79,9 @@ type CaptureRect = {
 const WECHAT_ARTICLE_WIDTH = 677;
 const MAX_INLINE_IMAGE_PIXELS = 4_000_000;
 const HTML_CAPTURE_PADDING = 8;
+const MERMAID_IMAGE_PADDING = 24;
+const MERMAID_IMAGE_SCALE = 2;
+const MERMAID_IMAGE_MAX_EDGE = 4096;
 const HTML_PREVIEW_LANGUAGES = new Set(['html', 'html-preview']);
 const NON_VISUAL_CAPTURE_TAGS = new Set(['script', 'style', 'template', 'link', 'meta', 'title']);
 const MIXED_CAPTURE_VISUAL_TAGS = new Set([
@@ -265,6 +270,7 @@ const FLOW_TEXT_TAGS = new Set([
 
 const RESPONSIVE_MEDIA_TAGS = new Set(['img', 'svg', 'canvas', 'video']);
 const PRESERVE_LAYOUT_ATTR = 'data-copy-preserve-layout';
+const HTML2CANVAS_UNSUPPORTED_COLOR_FUNCTION_RE = /\b(?:oklch|oklab|lch|lab|color-mix)\(/i;
 
 const getReadableText = (element: HTMLElement) =>
   (element.innerText || element.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
@@ -425,6 +431,26 @@ const cleanupPortableHtml = (root: HTMLElement) => {
       element.style.setProperty('white-space', 'pre-wrap');
       element.style.setProperty('word-break', 'break-word');
       element.style.setProperty('overflow-wrap', 'anywhere');
+    }
+  });
+};
+
+const cleanupPreviewChrome = (root: HTMLElement) => {
+  root.querySelectorAll('[data-copy-remove="true"], script').forEach((element) => {
+    element.remove();
+  });
+};
+
+const sanitizeStylesForHtml2Canvas = (root: HTMLElement) => {
+  [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))].forEach((element) => {
+    element.removeAttribute('class');
+
+    for (let index = element.style.length - 1; index >= 0; index -= 1) {
+      const property = element.style.item(index);
+      const value = element.style.getPropertyValue(property);
+      if (HTML2CANVAS_UNSUPPORTED_COLOR_FUNCTION_RE.test(value)) {
+        element.style.removeProperty(property);
+      }
     }
   });
 };
@@ -639,6 +665,80 @@ const copyRichHtml = async (
   }
 };
 
+const copyRichHtmlPayload = async (payloadPromise: Promise<CopyPayload>) => {
+  let payloadCache: CopyPayload | null = null;
+  const trackedPayload = payloadPromise.then((payload) => {
+    payloadCache = payload;
+    return payload;
+  });
+
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    try {
+      window.focus();
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': trackedPayload.then(
+            (payload) => new Blob([payload.html], { type: 'text/html' }),
+          ),
+          'text/plain': trackedPayload.then(
+            (payload) => new Blob([payload.plain], { type: 'text/plain' }),
+          ),
+        }),
+      ]);
+      return await trackedPayload;
+    } catch (err) {
+      console.warn('Promise-based rich copy failed, falling back to selection copy:', err);
+    }
+  }
+
+  const payload = payloadCache ?? (await trackedPayload);
+  await copyRichHtml(payload.html, payload.plain, {
+    preferSelection: payload.hasEmbeddedImages,
+  });
+  return payload;
+};
+
+const copyImageBlobPayload = async (
+  imageBlobPromise: Promise<Blob>,
+  htmlPromise: Promise<string>,
+  plain: string,
+) => {
+  let imageBlobCache: Blob | null = null;
+  let htmlCache: string | null = null;
+  const trackedImageBlob = imageBlobPromise.then((blob) => {
+    imageBlobCache = blob;
+    return blob;
+  });
+  const trackedHtml = htmlPromise.then((html) => {
+    htmlCache = html;
+    return html;
+  });
+
+  if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+    try {
+      window.focus();
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': trackedImageBlob,
+          'text/html': trackedHtml.then((html) => new Blob([html], { type: 'text/html' })),
+          'text/plain': new Blob([plain], { type: 'text/plain' }),
+        }),
+      ]);
+      await Promise.all([trackedImageBlob, trackedHtml]);
+      return;
+    } catch (err) {
+      console.warn('Promise-based image copy failed, falling back to rich HTML image:', err);
+    }
+  }
+
+  const [imageBlob, html] = await Promise.all([
+    imageBlobCache ? Promise.resolve(imageBlobCache) : trackedImageBlob,
+    htmlCache ? Promise.resolve(htmlCache) : trackedHtml,
+  ]);
+  if (!imageBlob) throw new Error('Failed to create image blob');
+  await copyRichHtml(html, plain, { preferSelection: true });
+};
+
 const detectContentType = (rawCode: string): ContentType => {
   const trimmed = rawCode.trim();
   if (!trimmed) return 'markdown';
@@ -689,29 +789,70 @@ const detectContentType = (rawCode: string): ContentType => {
   return 'markdown';
 };
 
-// Convert SVG string to PNG Blob for clipboard
-const svgToPngBlob = (svgContent: string): Promise<Blob> => {
+const parseSvgLength = (value: string | null) => {
+  const parsed = Number.parseFloat(value ?? '');
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const getSvgLogicalRect = (svgEl: Element) => {
+  const viewBox = svgEl.getAttribute('viewBox');
+  if (viewBox) {
+    const parts = viewBox.split(/\s+|,/).filter(Boolean).map(Number.parseFloat);
+    if (parts.length >= 4 && parts.every(Number.isFinite) && parts[2] > 0 && parts[3] > 0) {
+      return {
+        x: parts[0],
+        y: parts[1],
+        width: parts[2],
+        height: parts[3],
+      };
+    }
+  }
+
+  return {
+    x: 0,
+    y: 0,
+    width: parseSvgLength(svgEl.getAttribute('width')) || WECHAT_ARTICLE_WIDTH,
+    height: parseSvgLength(svgEl.getAttribute('height')) || 480,
+  };
+};
+
+// Convert Mermaid SVG to PNG without pixel-cropping or forced upscaling.
+const svgToPngCapture = (svgContent: string): Promise<HtmlCapture> => {
   return new Promise((resolve, reject) => {
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgContent, 'image/svg+xml');
     const svgEl = doc.documentElement;
-    svgEl.removeAttribute('style');
+    const baseRect = getSvgLogicalRect(svgEl);
+    const logicalWidth = Math.ceil(baseRect.width + MERMAID_IMAGE_PADDING * 2);
+    const logicalHeight = Math.ceil(baseRect.height + MERMAID_IMAGE_PADDING * 2);
+    const renderScale = Math.max(
+      1,
+      Math.min(
+        MERMAID_IMAGE_SCALE,
+        MERMAID_IMAGE_MAX_EDGE / logicalWidth,
+        MERMAID_IMAGE_MAX_EDGE / logicalHeight,
+      ),
+    );
+    const renderWidth = Math.max(1, Math.ceil(logicalWidth * renderScale));
+    const renderHeight = Math.max(1, Math.ceil(logicalHeight * renderScale));
 
-    const viewBox = svgEl.getAttribute('viewBox');
-    let nativeWidth = 0;
-    let nativeHeight = 0;
-    if (viewBox) {
-      const parts = viewBox.split(/\s+|,/).filter(Boolean);
-      if (parts.length >= 4) {
-        nativeWidth = parseFloat(parts[2]);
-        nativeHeight = parseFloat(parts[3]);
-      }
-    }
-    if (!nativeWidth) nativeWidth = parseFloat(svgEl.getAttribute('width') || '0');
-    if (!nativeHeight) nativeHeight = parseFloat(svgEl.getAttribute('height') || '0');
-    if (nativeWidth && nativeHeight) {
-      svgEl.setAttribute('width', nativeWidth.toString());
-      svgEl.setAttribute('height', nativeHeight.toString());
+    svgEl.setAttribute(
+      'viewBox',
+      [
+        baseRect.x - MERMAID_IMAGE_PADDING,
+        baseRect.y - MERMAID_IMAGE_PADDING,
+        logicalWidth,
+        logicalHeight,
+      ].join(' '),
+    );
+    svgEl.setAttribute('width', String(renderWidth));
+    svgEl.setAttribute('height', String(renderHeight));
+    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    (svgEl as SVGElement).style.removeProperty('max-width');
+    (svgEl as SVGElement).style.removeProperty('width');
+    (svgEl as SVGElement).style.removeProperty('height');
+    if (!svgEl.getAttribute('xmlns')) {
+      svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     }
 
     const serializer = new XMLSerializer();
@@ -731,29 +872,9 @@ const svgToPngBlob = (svgContent: string): Promise<Blob> => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
-      const sourceCanvas = document.createElement('canvas');
-      sourceCanvas.width = Math.max(1, Math.ceil(img.naturalWidth || img.width || nativeWidth || 1));
-      sourceCanvas.height = Math.max(1, Math.ceil(img.naturalHeight || img.height || nativeHeight || 1));
-
-      const sourceContext = sourceCanvas.getContext('2d', { willReadFrequently: true });
-      if (!sourceContext) {
-        reject(new Error('Failed to get canvas context'));
-        return;
-      }
-
-      sourceContext.clearRect(0, 0, sourceCanvas.width, sourceCanvas.height);
-      sourceContext.drawImage(img, 0, 0, sourceCanvas.width, sourceCanvas.height);
-
-      const bounds = getCanvasContentBounds(sourceCanvas, 16);
       const canvas = document.createElement('canvas');
-      const targetWidth = 2500;
-      let scale = 3;
-      if (bounds.width < targetWidth) {
-        scale = targetWidth / bounds.width;
-      }
-      scale = Math.min(scale, 10);
-      canvas.width = Math.ceil(bounds.width * scale);
-      canvas.height = Math.ceil(bounds.height * scale);
+      canvas.width = renderWidth;
+      canvas.height = renderHeight;
 
       const ctx = canvas.getContext('2d');
       if (!ctx) {
@@ -762,20 +883,16 @@ const svgToPngBlob = (svgContent: string): Promise<Blob> => {
       }
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(
-        sourceCanvas,
-        bounds.x,
-        bounds.y,
-        bounds.width,
-        bounds.height,
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       canvas.toBlob((blob) => {
-        if (blob) resolve(blob);
+        if (blob) {
+          resolve({
+            blob,
+            width: logicalWidth,
+            height: logicalHeight,
+          });
+        }
         else reject(new Error('Failed to create blob'));
       }, 'image/png');
     };
@@ -788,6 +905,7 @@ const svgToPngBlob = (svgContent: string): Promise<Blob> => {
     img.src = image64;
   });
 };
+
 
 const escapeHtmlAttribute = (value: string) =>
   value.replace(/[&<>"']/g, (char) => {
@@ -805,8 +923,24 @@ const escapeHtmlAttribute = (value: string) =>
     }
   });
 
-const createResponsiveImageHtml = (src: string, alt: string) =>
-  `<img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}" style="display:block;width:100%;max-width:${WECHAT_ARTICLE_WIDTH}px;height:auto;margin:16px auto;border:0;vertical-align:top;" />`;
+const createResponsiveImageHtml = (
+  src: string,
+  alt: string,
+  dimensions?: { width: number; height: number },
+) => {
+  const sourceWidth = dimensions ? Math.max(1, Math.round(dimensions.width)) : null;
+  const sourceHeight = dimensions ? Math.max(1, Math.round(dimensions.height)) : null;
+  const displayWidth = sourceWidth ? Math.min(sourceWidth, WECHAT_ARTICLE_WIDTH) : null;
+  const displayHeight =
+    sourceWidth && sourceHeight && displayWidth
+      ? Math.max(1, Math.round((sourceHeight * displayWidth) / sourceWidth))
+      : null;
+  const sizeAttributes =
+    displayWidth && displayHeight ? ` width="${displayWidth}" height="${displayHeight}"` : '';
+  const widthStyle = displayWidth ? `width:${displayWidth}px;` : 'width:auto;';
+
+  return `<img ${PRESERVE_LAYOUT_ATTR}="true" src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}"${sizeAttributes} style="display:block;${widthStyle}max-width:100%;height:auto;margin:16px auto;border:0;vertical-align:top;" />`;
+};
 
 const createEmbeddedPreviewImageHtml = (
   src: string,
@@ -927,9 +1061,17 @@ const replaceMermaidBlocksWithImages = async (root: HTMLElement) => {
       if (!svg) return;
 
       try {
-        const blob = await svgToPngBlob(svg.outerHTML);
-        const imageUrl = await blobToDataUrl(blob);
-        block.innerHTML = createResponsiveImageHtml(imageUrl, 'Mermaid diagram');
+        const capture = await svgToPngCapture(svg.outerHTML);
+        const imageUrl = await blobToDataUrl(capture.blob);
+        const imageWrapper = document.createElement('div');
+        imageWrapper.innerHTML = createResponsiveImageHtml(imageUrl, 'Mermaid diagram', capture);
+        const replacement = imageWrapper.firstElementChild;
+        const replaceTarget =
+          block.parentElement?.tagName.toLowerCase() === 'pre' ? block.parentElement : block;
+
+        if (replacement) {
+          replaceTarget.replaceWith(replacement);
+        }
         convertedCount++;
       } catch (err) {
         console.warn('Failed to convert Mermaid SVG for rich copy:', err);
@@ -958,9 +1100,9 @@ const buildMermaidImagesPayload = async (sourceRoot: HTMLElement): Promise<CopyP
 
   const imageHtml = await Promise.all(
     svgs.map(async (svg, index) => {
-      const blob = await svgToPngBlob(svg.outerHTML);
-      const imageUrl = await blobToDataUrl(blob);
-      return createResponsiveImageHtml(imageUrl, `Mermaid diagram ${index + 1}`);
+      const capture = await svgToPngCapture(svg.outerHTML);
+      const imageUrl = await blobToDataUrl(capture.blob);
+      return createResponsiveImageHtml(imageUrl, `Mermaid diagram ${index + 1}`, capture);
     }),
   );
 
@@ -1062,6 +1204,30 @@ const waitForHtmlDocumentAssets = async (doc: Document, timeoutMs = 2500) => {
   const fontPromise = doc.fonts?.ready.catch(() => undefined) ?? Promise.resolve();
   const paintPromise = new Promise<void>((resolve) => {
     (view?.requestAnimationFrame ?? window.requestAnimationFrame)(() => resolve());
+  });
+
+  await Promise.race([
+    Promise.all([...imagePromises, fontPromise, paintPromise]),
+    new Promise<void>((resolve) => window.setTimeout(resolve, timeoutMs)),
+  ]);
+};
+
+const waitForElementAssets = async (element: HTMLElement, timeoutMs = 2500) => {
+  const images = Array.from(element.querySelectorAll('img'));
+  const imagePromises = images.map((image) => {
+    if (image.complete && image.naturalWidth > 0) return Promise.resolve();
+    if (typeof image.decode === 'function') {
+      return image.decode().catch(() => undefined);
+    }
+    return new Promise<void>((resolve) => {
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+    });
+  });
+
+  const fontPromise = document.fonts?.ready.catch(() => undefined) ?? Promise.resolve();
+  const paintPromise = new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => resolve());
   });
 
   await Promise.race([
@@ -1398,6 +1564,34 @@ const capturePreviewElementScreenshot = async (element: HTMLElement): Promise<Ht
   });
 };
 
+const capturePortablePreviewScreenshot = async (sourceRoot: HTMLElement): Promise<HtmlCapture> => {
+  const { clone } = await preparePortablePreviewClone(sourceRoot, { stripChromeOnly: true });
+  const sourceRect = sourceRoot.getBoundingClientRect();
+  const host = document.createElement('div');
+  host.style.cssText = [
+    'position:fixed',
+    'left:-100000px',
+    'top:0',
+    `width:${Math.max(1, Math.ceil(sourceRect.width))}px`,
+    'background:#ffffff',
+    'pointer-events:none',
+    'z-index:-1',
+  ].join(';');
+
+  clone.style.setProperty('width', `${Math.max(1, Math.ceil(sourceRect.width))}px`);
+  clone.style.setProperty('max-width', 'none');
+  clone.style.setProperty('overflow', 'visible');
+  host.appendChild(clone);
+  document.body.appendChild(host);
+
+  try {
+    await waitForElementAssets(clone);
+    return await capturePreviewElementScreenshot(clone);
+  } finally {
+    document.body.removeChild(host);
+  }
+};
+
 const expandHtmlPreviews = async (sourceRoot: HTMLElement, cloneRoot: HTMLElement) => {
   const sourceFrames = Array.from(
     sourceRoot.querySelectorAll<HTMLIFrameElement>('[data-copy-role="html-preview"] iframe'),
@@ -1443,13 +1637,109 @@ const wrapArticleHtml = (html: string, source: HTMLElement) => {
   return wrapper.outerHTML;
 };
 
-const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPayload> => {
+const STANDALONE_HTML_CSS = `
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Inter','PingFang SC','Microsoft YaHei',sans-serif;line-height:1.75;color:#1f2937;background:#f8fafc}
+main.container{max-width:900px;margin:0 auto;padding:40px 24px;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,0.04)}
+h1,h2,h3,h4,h5,h6{margin-top:1.5em;margin-bottom:0.75em;line-height:1.3;font-weight:600;color:#111827}
+p{margin:.75em 0}
+a{color:#2563eb;text-decoration:none}
+a:hover{text-decoration:underline}
+img,svg{max-width:100%;height:auto;display:block;margin:1em auto}
+pre{background:#1e293b;color:#e2e8f0;padding:16px;border-radius:8px;overflow-x:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:14px;line-height:1.6;margin:1em 0}
+code{background:#f1f5f9;color:#c2410c;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.875em}
+pre code{background:transparent;color:inherit;padding:0}
+blockquote{margin:1em 0;padding:.5em 1em;border-left:4px solid #e5e7eb;color:#4b5563;background:#f9fafb}
+table{width:100%;border-collapse:collapse;margin:1em 0}
+th,td{border:1px solid #e5e7eb;padding:8px 12px;text-align:left}
+th{background:#f9fafb;font-weight:600}
+ul,ol{margin:.75em 0;padding-left:1.5em}
+li{margin:.25em 0}
+hr{border:0;border-top:1px solid #e5e7eb;margin:1.5em 0}
+@media (prefers-color-scheme:dark){
+body{background:#0f172a;color:#e2e8f0}
+main.container{background:#1e293b;box-shadow:0 0 40px rgba(0,0,0,0.2)}
+h1,h2,h3,h4,h5,h6{color:#f1f5f9}
+a{color:#60a5fa}
+blockquote{border-left-color:#374151;color:#9ca3af;background:#1f2937}
+pre{background:#0f172a}
+code{background:#1f2937;color:#fb923c}
+th,td{border-color:#374151}
+th{background:#1f2937}
+hr{border-color:#374151}
+}
+`;
+
+const wrapStandaloneHtml = (html: string, title: string = 'Mixed Preview') => {
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtmlAttribute(title)}</title>
+<style>${STANDALONE_HTML_CSS}</style>
+</head>
+<body>
+<main class="container">
+${html}
+</main>
+</body>
+</html>`;
+};
+
+const buildStandaloneRawHtml = (html: string) => {
+  const trimmed = html.trim();
+  if (!trimmed) return wrapStandaloneHtml('', 'Mixed Preview');
+
+  const hasDocType = /^<!doctype\s+html[\s>]/i.test(trimmed);
+  const hasHtmlTag = /^<html[\s>]/i.test(trimmed);
+  if (hasDocType || hasHtmlTag) {
+    return trimmed;
+  }
+
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mixed Preview</title>
+<style>html,body{margin:0;padding:0;background:#fff;}</style>
+</head>
+<body>
+${html}
+</body>
+</html>`;
+};
+
+const preparePortablePreviewClone = async (
+  sourceRoot: HTMLElement,
+  options: { cleanup?: boolean; stripChromeOnly?: boolean } = {},
+) => {
   await waitForHtmlPreviewFrames(sourceRoot);
   const clone = sourceRoot.cloneNode(true) as HTMLElement;
   appendInlineStyles(sourceRoot, clone);
   await expandHtmlPreviews(sourceRoot, clone);
   const hasEmbeddedImages = await replaceMermaidBlocksWithImages(clone);
-  cleanupPortableHtml(clone);
+
+  if (options.cleanup) {
+    cleanupPortableHtml(clone);
+  } else if (options.stripChromeOnly) {
+    cleanupPreviewChrome(clone);
+    sanitizeStylesForHtml2Canvas(clone);
+  }
+
+  return { clone, hasEmbeddedImages };
+};
+
+const buildStandaloneHtml = async (sourceRoot: HTMLElement): Promise<string> => {
+  const { clone } = await preparePortablePreviewClone(sourceRoot, { cleanup: true });
+  return wrapStandaloneHtml(clone.innerHTML, 'Mixed Preview');
+};
+
+const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPayload> => {
+  const { clone, hasEmbeddedImages } = await preparePortablePreviewClone(sourceRoot, {
+    cleanup: true,
+  });
 
   return {
     html: wrapArticleHtml(clone.innerHTML, sourceRoot),
@@ -1482,7 +1772,7 @@ const MermaidDiagram: React.FC<{
           const vbMatch = cleanedSvg.match(/viewBox="([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"/);
           if (vbMatch) {
             const [, vbX, vbY, vbW, vbH] = vbMatch.map(Number);
-            const pad = 8;
+            const pad = 16;
             cleanedSvg = cleanedSvg.replace(
               /viewBox="[^"]*"/,
               `viewBox="${vbX} ${vbY - pad} ${vbW} ${vbH + pad * 2}"`,
@@ -1537,8 +1827,8 @@ const MermaidDiagram: React.FC<{
     if (!svgContent) return;
 
     try {
-      const blob = await svgToPngBlob(svgContent);
-      const pngUrl = URL.createObjectURL(blob);
+      const capture = await svgToPngCapture(svgContent);
+      const pngUrl = URL.createObjectURL(capture.blob);
       const a = document.createElement('a');
       a.href = pngUrl;
       a.download = `mermaid-diagram-${Date.now()}.png`;
@@ -1768,7 +2058,7 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
       </div>
       <iframe
         srcDoc={wrappedCode}
-        sandbox="allow-scripts allow-popups-to-escape-sandbox"
+        sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox"
         className="w-full border-none bg-white"
         style={{ height: `${iframeHeight}px` }}
       />
@@ -1783,6 +2073,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   isMobile,
   onToggleSidebar,
 }) => {
+  const [exportAction, setExportAction] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedImages, setCopiedImages] = useState(false);
   const [copiedScreenshot, setCopiedScreenshot] = useState(false);
@@ -1813,6 +2104,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     }
   }, [contentType]);
   const canCopyRichText = contentType !== 'html' && contentType !== 'mixed';
+
   // Pre-process the code to auto-detect pure JSON or pure Mermaid if not wrapped
   const preprocessCode = (input: string) => {
     const trimmed = input.trim();
@@ -1923,10 +2215,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
         case 'markdown':
         default: {
           if (!previewRef.current) throw new Error('Preview is not ready');
-          const payload = await buildPreviewCopyPayload(previewRef.current);
-          await copyRichHtml(payload.html, payload.plain, {
-            preferSelection: payload.hasEmbeddedImages,
-          });
+          await copyRichHtmlPayload(buildPreviewCopyPayload(previewRef.current));
           break;
         }
       }
@@ -1944,27 +2233,15 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
       if (svgs.length === 0) throw new Error('No Mermaid diagrams are ready to copy');
 
       if (svgs.length === 1) {
-        const blob = await svgToPngBlob(svgs[0].outerHTML);
-        const imageUrl = await blobToDataUrl(blob);
-        const html = createResponsiveImageHtml(imageUrl, 'Mermaid diagram');
-        try {
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              'image/png': blob,
-              'text/html': new Blob([html], { type: 'text/html' }),
-              'text/plain': new Blob(['Mermaid diagram'], { type: 'text/plain' }),
-            }),
-          ]);
-        } catch (err) {
-          console.warn(
-            'navigator.clipboard.write Mermaid image failed, falling back to rich HTML image:',
-            err,
-          );
-          await copyRichHtml(html, 'Mermaid diagram', { preferSelection: true });
-        }
+        const capturePromise = svgToPngCapture(svgs[0].outerHTML);
+        const blobPromise = capturePromise.then((capture) => capture.blob);
+        const htmlPromise = capturePromise.then(async (capture) => {
+          const imageUrl = await blobToDataUrl(capture.blob);
+          return createResponsiveImageHtml(imageUrl, 'Mermaid diagram', capture);
+        });
+        await copyImageBlobPayload(blobPromise, htmlPromise, 'Mermaid diagram');
       } else {
-        const payload = await buildMermaidImagesPayload(previewRef.current);
-        await copyRichHtml(payload.html, payload.plain, { preferSelection: true });
+        await copyRichHtmlPayload(buildMermaidImagesPayload(previewRef.current));
       }
 
       setCopiedImages(true);
@@ -1977,29 +2254,19 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   const handleCopyMixedScreenshot = async () => {
     if (!previewRef.current) return;
     try {
-      const capture = await capturePreviewElementScreenshot(previewRef.current);
-      const { blob, width, height } = capture;
-      const imageUrl = await blobToDataUrl(blob);
-      const html = createEmbeddedPreviewImageHtml(imageUrl, 'Mixed preview screenshot', {
-        width,
-        height,
+      const capturePromise = capturePortablePreviewScreenshot(previewRef.current);
+      const htmlPromise = capturePromise.then(async ({ blob, width, height }) => {
+        const imageUrl = await blobToDataUrl(blob);
+        return createEmbeddedPreviewImageHtml(imageUrl, 'Mixed preview screenshot', {
+          width,
+          height,
+        });
       });
-
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'image/png': blob,
-            'text/html': new Blob([html], { type: 'text/html' }),
-            'text/plain': new Blob(['Mixed preview screenshot'], { type: 'text/plain' }),
-          }),
-        ]);
-      } catch (err) {
-        console.warn(
-          'navigator.clipboard.write mixed screenshot failed, falling back to rich HTML image:',
-          err,
-        );
-        await copyRichHtml(html, 'Mixed preview screenshot', { preferSelection: true });
-      }
+      await copyImageBlobPayload(
+        capturePromise.then(({ blob }) => blob),
+        htmlPromise,
+        'Mixed preview screenshot',
+      );
 
       setCopiedImages(true);
       setTimeout(() => setCopiedImages(false), 2000);
@@ -2014,29 +2281,19 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
       const iframe = previewRef.current.querySelector('iframe');
       if (!iframe) throw new Error('HTML preview is not ready');
 
-      const capture = await captureHtmlFrameScreenshot(iframe);
-      const { blob, width, height } = capture;
-      const imageUrl = await blobToDataUrl(blob);
-      const html = createEmbeddedPreviewImageHtml(imageUrl, 'HTML preview screenshot', {
-        width,
-        height,
+      const capturePromise = captureHtmlFrameScreenshot(iframe);
+      const htmlPromise = capturePromise.then(async ({ blob, width, height }) => {
+        const imageUrl = await blobToDataUrl(blob);
+        return createEmbeddedPreviewImageHtml(imageUrl, 'HTML preview screenshot', {
+          width,
+          height,
+        });
       });
-
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'image/png': blob,
-            'text/html': new Blob([html], { type: 'text/html' }),
-            'text/plain': new Blob(['HTML preview screenshot'], { type: 'text/plain' }),
-          }),
-        ]);
-      } catch (err) {
-        console.warn(
-          'navigator.clipboard.write HTML screenshot failed, falling back to rich HTML image:',
-          err,
-        );
-        await copyRichHtml(html, 'HTML preview screenshot', { preferSelection: true });
-      }
+      await copyImageBlobPayload(
+        capturePromise.then(({ blob }) => blob),
+        htmlPromise,
+        'HTML preview screenshot',
+      );
 
       setCopiedScreenshot(true);
       setTimeout(() => setCopiedScreenshot(false), 2000);
@@ -2045,10 +2302,66 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     }
   };
 
+  const handleOpenHtmlInNewTab = async () => {
+    if (!previewRef.current) return;
+    const newWindow = window.open('', '_blank');
+    if (!newWindow) {
+      console.error('Failed to open new window');
+      return;
+    }
+
+    try {
+      newWindow.opener = null;
+      newWindow.document.write(
+        '<!doctype html><html><head><meta charset="UTF-8"><title>Mixed Preview</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#475569;">生成预览中...</body></html>',
+      );
+      newWindow.document.close();
+    } catch {
+      // Some browser contexts disallow writing to the blank popup; assigning location below is enough.
+    }
+
+    try {
+      const html =
+        contentType === 'html' ? buildStandaloneRawHtml(code) : await buildStandaloneHtml(previewRef.current);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      newWindow.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 30000);
+      setExportAction('open');
+      setTimeout(() => setExportAction(null), 2000);
+    } catch (err) {
+      newWindow.close();
+      console.error('Failed to open HTML in new tab:', err);
+    }
+  };
+
+  const handleExportHtmlFile = async () => {
+    if (!previewRef.current) return;
+    try {
+      const html =
+        contentType === 'html' ? buildStandaloneRawHtml(code) : await buildStandaloneHtml(previewRef.current);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mixed-preview.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.setTimeout(() => URL.revokeObjectURL(url), 5000);
+      setExportAction('download');
+      setTimeout(() => setExportAction(null), 2000);
+    } catch (err) {
+      console.error('Failed to export HTML file:', err);
+    }
+  };
+
+  const isExporting = exportAction === 'open' || exportAction === 'download';
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
       <div
-        className="flex h-12 shrink-0 items-center justify-between px-4 bg-slate-100 border-b border-slate-200 z-10 shadow-sm overflow-hidden"
+        className="flex h-12 shrink-0 items-center justify-between px-4 bg-slate-100 border-b border-slate-200 z-10 shadow-sm"
       >
         <div className="flex items-center space-x-3">
           {onToggleSidebar && (
@@ -2066,16 +2379,16 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
             Preview
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-center justify-end gap-2 overflow-x-auto">
           {canCopyRichText && (
             <button
               onClick={handleCopy}
               disabled={!processedCode || copied || (contentType === 'mermaid' && mermaidCount === 0)}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
                 copied
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-              }`}
+              } disabled:opacity-40`}
               title={copied ? '已复制' : copyLabel}
             >
               {copied ? <Check size={14} /> : <Copy size={14} />}
@@ -2086,12 +2399,12 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
             <button
               onClick={handleCopyMixedScreenshot}
               disabled={copiedImages}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
                 copiedImages
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-              }`}
-              title={copiedImages ? '已复制图片' : '复制混合预览为图片'}
+              } disabled:opacity-40`}
+              title={copiedImages ? '已复制图片' : '复制图片'}
             >
               {copiedImages ? <Check size={14} /> : <Camera size={14} />}
               <span className="hidden md:inline">{copiedImages ? '已复制图片' : '复制图片'}</span>
@@ -2100,12 +2413,12 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
           {contentType !== 'mixed' && mermaidCount > 0 && (
             <button
               onClick={handleCopyImages}
-              disabled={copiedImages}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              disabled={copiedImages || mermaidCount === 0}
+              className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
                 copiedImages
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-              }`}
+              } disabled:opacity-40`}
               title={copiedImages ? '已复制图片' : `复制 ${mermaidCount} 张 Mermaid 图片`}
             >
               {copiedImages ? <Check size={14} /> : <ImageIcon size={14} />}
@@ -2116,17 +2429,43 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
             <button
               onClick={handleCopyScreenshot}
               disabled={copiedScreenshot}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
                 copiedScreenshot
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              }`}
-              title={copiedScreenshot ? '已复制图片' : '复制 HTML 页面为图片'}
+              } disabled:opacity-40`}
+              title={copiedScreenshot ? '已复制图片' : '复制图片'}
             >
               {copiedScreenshot ? <Check size={14} /> : <Camera size={14} />}
               <span className="hidden md:inline">{copiedScreenshot ? '已复制图片' : '复制图片'}</span>
             </button>
           )}
+          <button
+            onClick={handleOpenHtmlInNewTab}
+            disabled={!processedCode || isExporting}
+            className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              exportAction === 'open'
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+            } disabled:opacity-40`}
+            title={exportAction === 'open' ? '已打开' : '新窗口预览'}
+          >
+            {exportAction === 'open' ? <Check size={14} /> : <ExternalLink size={14} />}
+            <span className="hidden md:inline">{exportAction === 'open' ? '已打开' : '新窗口预览'}</span>
+          </button>
+          <button
+            onClick={handleExportHtmlFile}
+            disabled={!processedCode || isExporting}
+            className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+              exportAction === 'download'
+                ? 'bg-green-50 text-green-700 border-green-200'
+                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+            } disabled:opacity-40`}
+            title={exportAction === 'download' ? '已导出' : '导出 HTML 文件'}
+          >
+            {exportAction === 'download' ? <Check size={14} /> : <FileDown size={14} />}
+            <span className="hidden md:inline">{exportAction === 'download' ? '已导出' : '导出 HTML'}</span>
+          </button>
         </div>
       </div>
       <div
