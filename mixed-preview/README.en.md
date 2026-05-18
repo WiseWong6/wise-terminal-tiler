@@ -1,4 +1,4 @@
-# Mixed Preview
+# mixed-preview
 
 <p align="center">
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
@@ -40,10 +40,8 @@ Edit on the left, live render on the right:
 - Auto-detects content type: paste raw JSON or raw Mermaid syntax directly, no need to wrap in fences
 - Export Mermaid diagrams as SVG or PNG (PNG auto-scales to 2500px wide, white background)
 - Full HTML documents render in a sandboxed iframe with style isolation
-- Rich copy to clipboard — rendered content (with Mermaid diagrams as inline images) can be pasted directly into WeChat article editor, auto-fitted to 677px width
-- Screenshot capture — one-click export of preview area or HTML iframe content as PNG images
-- Zoom & pan — Mermaid diagrams support scaling and drag-to-pan navigation
-- 7 built-in sample contents, one-click switch: Mixed / Markdown / HTML / JSON / Flowchart / Sequence / Class Diagram
+- 6 built-in sample contents, one-click switch: Mixed / Markdown / HTML / JSON / Flowchart / Sequence
+- AI fix: let AI fix your syntax errors, with configurable API providers
 
 ## Quick Start
 
@@ -117,6 +115,21 @@ When a full HTML document is detected (starting with `<!DOCTYPE html>` or `<html
 
 ---
 
+## AI Fix
+
+When the preview encounters a syntax error, the editor shows the error message and a "Fix with AI" button. Clicking it sends your code and error to your configured AI provider, which returns the fixed code.
+
+Click the gear icon in the top-right to configure AI:
+
+| Provider Type | Supported Services |
+|--------------|-------------------|
+| OpenAI-compatible | OpenAI, DeepSeek, Gemini, Groq, Ollama |
+| Anthropic | Claude API |
+
+Configuration is stored in localStorage — nothing is sent to any server. API requests go directly from the browser.
+
+---
+
 ## Tech Stack
 
 | Dependency | Purpose |
@@ -145,21 +158,54 @@ npm run format       # Format with Prettier
 
 ---
 
+## Release and Sync
+
+The source of truth for `mixed-preview` is `WiseWong6/website/mixed-preview`. Day-to-day development happens there.
+
+The `WiseWong6/wise-labs` repository is the public release mirror. It receives source code via a sync script that strips internal-only features (SEO tags, About modal auto-trigger, internal docs).
+
+### Sync flow
+
+```bash
+# 1. Make changes in website/mixed-preview
+cd /Users/wisewong/Documents/Developer/website/mixed-preview
+# ... edit code ...
+
+# 2. Build and commit in website
+git add .
+git commit -m "fix(mixed-preview): ..."
+git push origin main
+
+# 3. Sync to wise-labs (auto-commit & push)
+python3 mixed-preview/scripts/sync-to-wise-labs.py
+```
+
+The sync script (`sync-to-wise-labs.py`) does the following:
+
+1. Rsyncs source files from `website/mixed-preview` to `wise-labs/mixed-preview`
+2. Patches `App.tsx` to remove the About modal auto-trigger
+3. Patches `index.html` to remove SEO tags (Baidu, Google Analytics, Open Graph, Twitter Card)
+4. Patches README files to remove internal sync sections
+5. Runs `npm run lint` in the target directory
+6. Auto-commits and pushes to `wise-labs/main`
+
+After a push to `wise-labs/main`, the `Deploy Mixed Preview` GitHub Actions workflow automatically builds and deploys to GitHub Pages.
+
+---
+
 ## Scope
 
 **It does**
 - Mix Markdown, HTML, JSON, and Mermaid in one editor with live preview
 - Auto-detect content type — no manual selection needed
 - High-resolution diagram export (SVG / PNG)
-- Rich copy to clipboard (WeChat-optimized 677px width)
-- Screenshot capture for previews and iframe contents
-- Zoom & pan for Mermaid diagrams
+- Optional AI-assisted code fixing
 
 **It doesn't**
-- Collaborative editing (no real-time multi-user editing)
-- File management (single editor pane, no multi-file management)
-- Persistent storage (content resets to sample on page refresh)
-- IDE features (no file tree, terminal, or Git integration)
+- Not a collaborative editor (no real-time multi-user editing)
+- Not a file manager (single editor pane, no multi-file management)
+- No persistent storage (content resets to sample on page refresh)
+- Not an IDE (no file tree, terminal, or Git integration)
 
 ---
 
@@ -179,10 +225,4 @@ npm run format       # Format with Prettier
 
 ## Star History
 
-<a href="https://www.star-history.com/#WiseWong6/wise-labs&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date" />
-  </picture>
-</a>
+[![Star History Chart](https://api.star-history.com/image?repos=WiseWong6/wise-labs&type=Date)](https://www.star-history.com/#WiseWong6/wise-labs&Date)

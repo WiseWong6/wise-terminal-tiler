@@ -42,10 +42,8 @@
 - 🎯 **自动检测内容类型** —— 纯 JSON 直接贴进去能渲染，纯 Mermaid 语法也行
 - 📊 **Mermaid 图表导出** SVG / PNG（PNG 自动放大到 2500px 宽，白底）
 - 🔒 **HTML 沙盒渲染** —— 完整 HTML 文档在 iframe 中渲染，带样式隔离
-- 📋 **富文本复制到剪贴板** —— 渲染后的内容（含 Mermaid 图表转内联图片）可直接粘贴到微信文章编辑器，自动适配 677px 宽度
-- 📸 **截图捕获** —— 一键将预览区或 HTML iframe 内容导出为 PNG 图片
-- 🔍 **缩放 & 拖拽查看** —— Mermaid 图表支持缩放和平移浏览
-- 🎨 **内置 5 个示例** —— Mixed / Markdown / HTML / JSON / Mermaid 一键切换
+- 🎨 **内置 6 个示例** —— Mixed / Markdown / HTML / JSON / Flowchart / Sequence 一键切换
+- 🤖 **AI 修复** —— 写错了让 AI 帮你修，支持自定义 API 提供商
 
 ---
 
@@ -121,12 +119,29 @@ npm run dev
 
 ---
 
+## AI 修复
+
+当预览出现语法错误时，编辑器会显示错误信息和「Fix with AI」按钮。点击后会把当前代码和错误信息发给你配置的 AI 提供商，返回修复后的代码。
+
+点击右上角齿轮图标配置 AI：
+
+| 提供商类型 | 支持的服务 |
+|-----------|-----------|
+| OpenAI 兼容 | OpenAI、DeepSeek、Gemini、Groq、Ollama |
+| Anthropic | Claude API |
+
+配置存在 localStorage，不会发送到任何服务器。API 请求直接从浏览器发出。
+
+---
+
 ## 这个工具的边界
 
 **它做**
 - 一个编辑器里混合写 Markdown、HTML、JSON、Mermaid，实时预览
 - 自动检测内容类型，不需要手动指定
 - 高分辨率图表导出（SVG / PNG）
+- 可选的 AI 辅助修复
+
 **它不做**
 - 不是协作编辑器（没有多人实时协作）
 - 不是文件管理器（只有一个编辑区，不管理多个文件）
@@ -179,13 +194,42 @@ npm run format       # Prettier 格式化
 
 ## Star History
 
-<a href="https://www.star-history.com/#WiseWong6/wise-labs&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=WiseWong6/wise-labs&type=date" />
-  </picture>
-</a>
+[![Star History Chart](https://api.star-history.com/image?repos=WiseWong6/wise-labs&type=Date)](https://www.star-history.com/#WiseWong6/wise-labs&Date)
+
+---
+
+## 发布与同步
+
+`mixed-preview` 的源码唯一来源是 `WiseWong6/website/mixed-preview`，日常开发都在那里进行。
+
+`WiseWong6/wise-labs` 是公开的 release 镜像仓库。通过同步脚本将源码同步过去，并自动移除内部功能（SEO 标签、About 弹窗自动触发、内部文档）。
+
+### 同步流程
+
+```bash
+# 1. 在 website/mixed-preview 中修改代码
+cd /Users/wisewong/Documents/Developer/website/mixed-preview
+# ... 修改代码 ...
+
+# 2. 在 website 中构建并提交
+git add .
+git commit -m "fix(mixed-preview): ..."
+git push origin main
+
+# 3. 同步到 wise-labs（自动 commit & push）
+python3 mixed-preview/scripts/sync-to-wise-labs.py
+```
+
+同步脚本 `sync-to-wise-labs.py` 的工作内容：
+
+1. 将 `website/mixed-preview` 的源文件 rsync 到 `wise-labs/mixed-preview`
+2. 从 `App.tsx` 中移除 About 弹窗自动触发逻辑
+3. 从 `index.html` 中移除 SEO 标签（百度统计、Google Analytics、Open Graph、Twitter Card）
+4. 从 README 中移除内部同步说明
+5. 在目标目录运行 `npm run lint`
+6. 自动 commit 并 push 到 `wise-labs/main`
+
+推送到 `wise-labs/main` 后，`Deploy Mixed Preview` GitHub Actions 工作流会自动构建并部署到 GitHub Pages。
 
 ---
 
