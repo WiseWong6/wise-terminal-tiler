@@ -198,41 +198,6 @@ npm run format       # Prettier 格式化
 
 ---
 
-## 发布与同步
-
-`mixed-preview` 的源码唯一来源是 `WiseWong6/website/mixed-preview`，日常开发都在那里进行。
-
-`WiseWong6/wise-labs` 是公开的 release 镜像仓库。通过同步脚本将源码同步过去，并自动移除内部功能（SEO 标签、About 弹窗自动触发、内部文档）。
-
-### 同步流程
-
-```bash
-# 1. 在 website/mixed-preview 中修改代码
-cd /Users/wisewong/Documents/Developer/website/mixed-preview
-# ... 修改代码 ...
-
-# 2. 在 website 中构建并提交
-git add .
-git commit -m "fix(mixed-preview): ..."
-git push origin main
-
-# 3. 同步到 wise-labs（自动 commit & push）
-python3 mixed-preview/scripts/sync-to-wise-labs.py
-```
-
-同步脚本 `sync-to-wise-labs.py` 的工作内容：
-
-1. 将 `website/mixed-preview` 的源文件 rsync 到 `wise-labs/mixed-preview`
-2. 从 `App.tsx` 中移除 About 弹窗自动触发逻辑
-3. 从 `index.html` 中移除 SEO 标签（百度统计、Google Analytics、Open Graph、Twitter Card）
-4. 从 README 中移除内部同步说明
-5. 在目标目录运行 `npm run lint`
-6. 自动 commit 并 push 到 `wise-labs/main`
-
-推送到 `wise-labs/main` 后，`Deploy Mixed Preview` GitHub Actions 工作流会自动构建并部署到 GitHub Pages。
-
----
-
 ## License
 
 MIT License

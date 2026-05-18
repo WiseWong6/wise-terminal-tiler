@@ -158,41 +158,6 @@ npm run format       # Format with Prettier
 
 ---
 
-## Release and Sync
-
-The source of truth for `mixed-preview` is `WiseWong6/website/mixed-preview`. Day-to-day development happens there.
-
-The `WiseWong6/wise-labs` repository is the public release mirror. It receives source code via a sync script that strips internal-only features (SEO tags, About modal auto-trigger, internal docs).
-
-### Sync flow
-
-```bash
-# 1. Make changes in website/mixed-preview
-cd /Users/wisewong/Documents/Developer/website/mixed-preview
-# ... edit code ...
-
-# 2. Build and commit in website
-git add .
-git commit -m "fix(mixed-preview): ..."
-git push origin main
-
-# 3. Sync to wise-labs (auto-commit & push)
-python3 mixed-preview/scripts/sync-to-wise-labs.py
-```
-
-The sync script (`sync-to-wise-labs.py`) does the following:
-
-1. Rsyncs source files from `website/mixed-preview` to `wise-labs/mixed-preview`
-2. Patches `App.tsx` to remove the About modal auto-trigger
-3. Patches `index.html` to remove SEO tags (Baidu, Google Analytics, Open Graph, Twitter Card)
-4. Patches README files to remove internal sync sections
-5. Runs `npm run lint` in the target directory
-6. Auto-commits and pushes to `wise-labs/main`
-
-After a push to `wise-labs/main`, the `Deploy Mixed Preview` GitHub Actions workflow automatically builds and deploys to GitHub Pages.
-
----
-
 ## Scope
 
 **It does**
