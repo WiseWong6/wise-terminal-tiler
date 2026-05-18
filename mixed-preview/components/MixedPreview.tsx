@@ -1905,8 +1905,14 @@ const MermaidDiagram: React.FC<{
           </button>
         </div>
       </div>
-      <ZoomableWrapper scale={scale} className="mermaid-container flex justify-center p-4">
-        <div dangerouslySetInnerHTML={{ __html: svgContent }} />
+      <ZoomableWrapper scale={scale} className="mermaid-container flex justify-center p-4 min-h-[200px]">
+        {svgContent ? (
+          <div dangerouslySetInnerHTML={{ __html: svgContent }} />
+        ) : (
+          <div className="flex items-center justify-center w-full">
+            <Loader2 size={20} className="animate-spin text-indigo-400" />
+          </div>
+        )}
       </ZoomableWrapper>
     </div>
   );
@@ -2033,7 +2039,12 @@ const wrapHtmlPreview = (rawCode: string, id: string): string => {
 const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
   const id = useMemo(() => Math.random().toString(36).slice(2, 8), []);
   const [iframeHeight, setIframeHeight] = useState(400);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const wrappedCode = useMemo(() => wrapHtmlPreview(code, id), [code, id]);
+
+  useEffect(() => {
+    setIframeLoaded(false);
+  }, [wrappedCode]);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
@@ -2056,12 +2067,21 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
       >
         <span>HTML Preview</span>
       </div>
-      <iframe
-        srcDoc={wrappedCode}
-        sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox"
-        className="w-full border-none bg-white"
-        style={{ height: `${iframeHeight}px` }}
-      />
+      <div className="relative w-full bg-white" style={{ height: `${iframeHeight}px` }}>
+        {!iframeLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
+            <Loader2 size={20} className="animate-spin text-indigo-400" />
+          </div>
+        )}
+        <iframe
+          srcDoc={wrappedCode}
+          sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox"
+          className={`w-full h-full border-none bg-white transition-opacity duration-300 ${
+            iframeLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          onLoad={() => setIframeLoaded(true)}
+        />
+      </div>
     </div>
   );
 };
@@ -2160,6 +2180,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   // Show loading immediately when content changes, hide after render settles
   useEffect(() => {
     setIsRendering(true);
+    const renderStartTime = Date.now();
     if (renderTimeoutRef.current) {
       clearTimeout(renderTimeoutRef.current);
     }
@@ -2168,10 +2189,18 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
       // Double rAF to ensure React has painted content
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          setIsRendering(false);
+          const elapsed = Date.now() - renderStartTime;
+          const minDisplayMs = 250;
+          if (elapsed >= minDisplayMs) {
+            setIsRendering(false);
+          } else {
+            renderTimeoutRef.current = window.setTimeout(() => {
+              setIsRendering(false);
+            }, minDisplayMs - elapsed);
+          }
         });
       });
-    }, 80);
+    }, 200);
     return () => {
       if (renderTimeoutRef.current) {
         clearTimeout(renderTimeoutRef.current);
@@ -2472,12 +2501,14 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
         ref={scrollContainerRef}
         className="relative min-h-0 flex-1 overflow-auto"
       >
-        {isRendering && processedCode && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm transition-opacity">
-            <Loader2 size={28} className="animate-spin text-indigo-600 mb-3" />
-            <span className="text-sm text-slate-500 font-medium">渲染中...</span>
-          </div>
-        )}
+        <div
+          className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50 transition-opacity duration-300 ease-in-out ${
+            isRendering && processedCode ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <Loader2 size={28} className="animate-spin text-indigo-600 mb-3" />
+          <span className="text-sm text-slate-500 font-medium">渲染中...</span>
+        </div>
         <div className="w-full p-8">
           <div
             ref={previewRef}
