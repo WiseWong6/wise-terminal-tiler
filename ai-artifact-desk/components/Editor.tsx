@@ -29,24 +29,24 @@ const Editor: React.FC<EditorProps> = ({ value, onChange, error }) => {
           <button
             onClick={() => onChange('')}
             disabled={!value}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-xs font-medium transition-colors border bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-30"
             title="清空"
+            aria-label="清空"
           >
             <Trash2 size={14} />
-            <span>清空</span>
           </button>
           <button
             onClick={handleCopy}
             disabled={!value || copied}
-            className={`flex items-center space-x-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded text-xs font-medium transition-colors border ${
               copied
                 ? 'bg-green-50 text-green-700 border-green-200'
                 : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
             }`}
             title={copied ? '已复制' : '复制原格式'}
+            aria-label={copied ? '已复制' : '复制原格式'}
           >
             {copied ? <Check size={14} /> : <Copy size={14} />}
-            <span>{copied ? '已复制' : '复制'}</span>
           </button>
         </div>
       </div>

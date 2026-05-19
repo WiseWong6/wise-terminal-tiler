@@ -170,12 +170,12 @@ const App: React.FC = () => {
           <div className="relative" ref={sampleMenuRef}>
             <button
               onClick={() => setIsSampleMenuOpen(prev => !prev)}
-              className="flex h-8 w-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 hover:bg-slate-200/50 md:h-auto md:w-auto md:justify-start md:rounded-none md:hover:bg-transparent"
+              className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 hover:bg-slate-200/50 md:h-auto md:w-auto md:justify-start md:rounded-none md:hover:bg-transparent"
               title="案例"
               aria-label="案例"
             >
               <Layers size={14} />
-              <span className="hidden md:inline">案例</span>
+              <span className="hidden md:inline" style={{ whiteSpace: 'nowrap' }}>案例</span>
             </button>
 
             {isSampleMenuOpen && (
@@ -207,20 +207,22 @@ const App: React.FC = () => {
             href="https://github.com/WiseWong6/wise-labs/tree/main/ai-artifact-desk"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+            className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 hover:bg-slate-200/50 md:h-auto md:w-auto md:justify-start md:rounded-none md:hover:bg-transparent"
             title="源码"
+            aria-label="源码"
           >
             <Github size={14} />
-            源码
+            <span className="hidden md:inline" style={{ whiteSpace: 'nowrap' }}>源码</span>
           </a>
 
           <button
             onClick={() => setIsAboutOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors"
+            className="flex h-8 w-8 shrink-0 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-slate-500 transition-colors hover:text-indigo-600 hover:bg-slate-200/50 md:h-auto md:w-auto md:justify-start md:rounded-none md:hover:bg-transparent"
             title="关于"
+            aria-label="关于"
           >
             <Coffee size={14} />
-            关于
+            <span className="hidden md:inline" style={{ whiteSpace: 'nowrap' }}>关于</span>
           </button>
 
         </div>
@@ -248,7 +250,7 @@ const App: React.FC = () => {
         />
 
         <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-50">
-          <ArtifactPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} isMobile={isMobile} onToggleSidebar={isMobile ? toggleMobileEditor : toggleSidebar} />
+          <ArtifactPreview code={debouncedCode} stateResetKey={code} onError={setError} isCollapsed={isCollapsed} isMobile={isMobile} onToggleSidebar={isMobile ? toggleMobileEditor : toggleSidebar} />
         </div>
       </main>
 

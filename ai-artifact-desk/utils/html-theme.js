@@ -131,14 +131,20 @@ export const pickAdaptiveTextColor = ({
  */
 export const buildHtmlPreviewThemeBridge = (theme) => {
   const palette = getThemeFallbackPalette(theme);
+  const palettes = {
+    dark: getThemeFallbackPalette('dark'),
+    light: getThemeFallbackPalette('light'),
+  };
   const escapedBackground = JSON.stringify(palette.background);
   const escapedForeground = JSON.stringify(palette.foreground);
   const escapedScheme = JSON.stringify(palette.colorScheme);
+  const escapedPalettes = JSON.stringify(palettes);
 
   return `
 <style>:root { color-scheme: ${palette.colorScheme}; }</style>
 <script>
 (function() {
+  var palettes = ${escapedPalettes};
   var fallbackTheme = {
     colorScheme: ${escapedScheme},
     backgroundColor: ${escapedBackground},
@@ -150,6 +156,15 @@ export const buildHtmlPreviewThemeBridge = (theme) => {
   };
   var hasInlineColor = function(el) {
     return !!(el && el.style && el.style.color);
+  };
+  var setTheme = function(theme) {
+    var next = palettes[theme === 'dark' ? 'dark' : 'light'];
+    fallbackTheme = {
+      colorScheme: next.colorScheme,
+      backgroundColor: next.background,
+      foregroundColor: next.foreground
+    };
+    apply();
   };
   var apply = function() {
     var html = document.documentElement;
@@ -170,6 +185,12 @@ export const buildHtmlPreviewThemeBridge = (theme) => {
       }
     });
   };
+  window.__setArtifactPreviewTheme = setTheme;
+  window.addEventListener('message', function(event) {
+    if (event && event.data && event.data.type === 'html-preview-theme') {
+      setTheme(event.data.theme);
+    }
+  });
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', apply, { once: true });
   } else {
@@ -232,13 +253,28 @@ export const injectThemeBridgeIntoHtmlDocument = (html, theme) => {
   if (!trimmed) return trimmed;
 
   const bridge = buildHtmlPreviewThemeBridge(theme);
+  const charsetMetaPattern =
+    /(<meta\b[^>]*(?:charset\s*=|content\s*=\s*["'][^"']*charset\s*=)[^>]*>)/i;
+  const charsetMeta = '<meta charset="UTF-8">';
+  const headContent = `${charsetMeta}${bridge}`;
+
   if (/<head[\s>]/i.test(trimmed)) {
-    return trimmed.replace(/(<head[^>]*>)/i, `$1${bridge}`);
+    return trimmed.replace(/(<head[^>]*>)([\s\S]*?)(<\/head>)/i, (_, openHead, head, closeHead) => {
+      if (charsetMetaPattern.test(head)) {
+        return `${openHead}${head.replace(charsetMetaPattern, `$1${bridge}`)}${closeHead}`;
+      }
+
+      return `${openHead}${headContent}${head}${closeHead}`;
+    });
   }
 
   if (/<html[\s>]/i.test(trimmed)) {
-    return trimmed.replace(/(<html[^>]*>)/i, `$1<head>${bridge}</head>`);
+    return trimmed.replace(/(<html[^>]*>)/i, `$1<head>${headContent}</head>`);
   }
 
-  return `${bridge}${trimmed}`;
+  if (/^<!doctype\s+html[\s>]/i.test(trimmed)) {
+    return trimmed.replace(/^(<!doctype\s+html[^>]*>)/i, `$1<html><head>${headContent}</head>`);
+  }
+
+  return `${headContent}${trimmed}`;
 };

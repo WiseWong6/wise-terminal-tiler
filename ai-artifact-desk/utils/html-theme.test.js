@@ -73,6 +73,8 @@ test('buildHtmlPreviewThemeBridge injects minimal fallback script with the curre
   assert.match(bridge, /#111113/);
   assert.match(bridge, /#d1d1d6/);
   assert.match(bridge, /backgroundColor/);
+  assert.match(bridge, /html-preview-theme/);
+  assert.match(bridge, /__setArtifactPreviewTheme/);
 });
 
 test('buildStandaloneThemeCss returns an explicit dark standalone theme instead of relying on prefers-color-scheme', () => {
@@ -92,5 +94,42 @@ test('injectThemeBridgeIntoHtmlDocument adds the standalone bridge into full htm
 
   assert.match(themed, /<style>:root \{ color-scheme: dark; \}<\/style>/);
   assert.match(themed, /fallbackTheme/);
-  assert.match(themed, /<head>\s*<style>:root \{ color-scheme: dark; \}<\/style>/);
+  assert.match(themed, /<head>\s*<meta charset="UTF-8">\s*<style>:root \{ color-scheme: dark; \}<\/style>/);
+});
+
+test('injectThemeBridgeIntoHtmlDocument preserves existing charset meta', () => {
+  const themed = injectThemeBridgeIntoHtmlDocument(
+    '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>X</title></head><body>中文</body></html>',
+    'light',
+  );
+
+  assert.equal((themed.match(/<meta charset="UTF-8">/g) ?? []).length, 1);
+  assert.match(themed, /<meta charset="UTF-8">\s*<style>:root \{ color-scheme: light; \}<\/style>/);
+  assert.match(
+    themed,
+    /<head><meta charset="UTF-8">\s*<style>:root \{ color-scheme: light; \}<\/style>[\s\S]*<title>X<\/title>/,
+  );
+});
+
+test('injectThemeBridgeIntoHtmlDocument creates a charset head when html documents omit head', () => {
+  const themed = injectThemeBridgeIntoHtmlDocument(
+    '<!DOCTYPE html><html><body><div>AI文档渲染</div></body></html>',
+    'light',
+  );
+
+  assert.match(themed, /<html><head><meta charset="UTF-8">\s*<style>:root \{ color-scheme: light; \}<\/style>/);
+  assert.match(themed, /<body><div>AI文档渲染<\/div><\/body>/);
+});
+
+test('injectThemeBridgeIntoHtmlDocument keeps legacy content-type charset before bridge scripts', () => {
+  const themed = injectThemeBridgeIntoHtmlDocument(
+    '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"><title>中文</title></head><body>AI文档渲染</body></html>',
+    'dark',
+  );
+
+  assert.match(
+    themed,
+    /<meta http-equiv="Content-Type" content="text\/html; charset=utf-8">\s*<style>:root \{ color-scheme: dark; \}<\/style>/,
+  );
+  assert.match(themed, /<title>中文<\/title>/);
 });

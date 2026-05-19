@@ -23,7 +23,7 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
       el.style.transform = 'none';
       const rect = el.getBoundingClientRect();
       el.style.transform = originalTransform;
-      setNaturalSize({ width: rect.width, height: rect.height + 10 });
+      setNaturalSize({ width: rect.width, height: rect.height + 24 });
     };
     measure();
     const timer = setTimeout(measure, 800);
@@ -35,6 +35,14 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
       clearTimeout(timer);
       ro.disconnect();
     };
+  }, [children]);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      containerRef.current?.scrollTo({ left: 0, top: 0 });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
   }, [children]);
 
   // Drag-to-pan using scrollLeft/scrollTop
@@ -80,15 +88,16 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
           minWidth: fullWidth ? '100%' : scaledWidth,
           height: scaledHeight,
           minHeight: scaledHeight,
-          display: 'grid',
-          placeItems: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start',
         }}
       >
         <div
           ref={contentRef}
           style={{
             transform: `scale(${scale})`,
-            transformOrigin: 'center center',
+            transformOrigin: 'top center',
             display: fullWidth ? 'block' : 'inline-block',
             width: contentWidth,
           }}

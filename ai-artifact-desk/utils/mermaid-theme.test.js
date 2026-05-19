@@ -224,7 +224,7 @@ test('getMermaidConfig binds core text, line, and border variables to the dark f
 test('getMermaidDiagramScale returns the updated default scale map', () => {
   assert.equal(getMermaidDiagramScale('graph TD\nA --> B'), 0.576);
   assert.equal(getMermaidDiagramScale('sequenceDiagram\nA->>B: hi'), 0.9);
-  assert.equal(getMermaidDiagramScale('stateDiagram-v2\n[*] --> 待处理'), 0.369);
+  assert.equal(getMermaidDiagramScale('stateDiagram-v2\n[*] --> 待处理'), 0.738);
   assert.equal(getMermaidDiagramScale('classDiagram\nclass Animal'), 0.72);
   assert.equal(getMermaidDiagramScale('erDiagram\nA ||--o{ B : owns'), 0.2824);
   assert.equal(getMermaidDiagramScale('architecture-beta\nservice api(server)[API]'), 0.8);

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { X, Coffee, Newspaper } from 'lucide-react';
+import { X, Coffee, Newspaper, CalendarDays } from 'lucide-react';
+import { CHANGELOG_ENTRIES } from '../data/changelog';
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -64,6 +65,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            aria-label="关闭"
           >
             <X size={18} />
           </button>
@@ -134,6 +136,34 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <p className="text-sm text-slate-500 text-center mt-5">
               如果这个工具对你有帮助，可以请 Wise 喝一杯咖啡，你的支持是我持续迭代的动力
             </p>
+          </section>
+
+          <section className="pt-2 border-t border-slate-200" aria-labelledby="changelog-title">
+            <div className="mb-3 flex items-center gap-2">
+              <CalendarDays size={14} className="text-indigo-600" />
+              <h3 id="changelog-title" className="text-sm font-semibold text-slate-900 uppercase tracking-wider">
+                更新公告
+              </h3>
+            </div>
+            <div
+              className="overflow-y-auto rounded-xl border border-slate-200 bg-white/70 px-4 py-3"
+              style={{ height: 229 }}
+            >
+              <div className="space-y-5">
+                {CHANGELOG_ENTRIES.map((entry) => (
+                  <article key={entry.date} className="relative pl-6">
+                    <div className="absolute left-1 top-1 h-full w-px bg-slate-200" />
+                    <div className="absolute left-0 top-1 h-2.5 w-2.5 rounded-full bg-indigo-600 ring-4 ring-indigo-50" />
+                    <time className="block text-sm font-semibold text-slate-900">
+                      {entry.date}
+                    </time>
+                    <p className="mt-3 text-sm leading-relaxed text-slate-600">
+                      {entry.summary}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </div>
           </section>
         </div>
 

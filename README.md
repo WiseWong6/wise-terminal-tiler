@@ -65,10 +65,10 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含多个独立
 - 📊 Mermaid 支持懒渲染、独立缩放、SVG 下载和 PNG 下载
 - 📋 一键复制格式化 JSON、富文本、Mermaid 图片和预览截图
 - 🔒 完整 HTML 文档在 iframe 沙盒中渲染，可新窗口预览和导出 HTML
-- 📸 预览区与 HTML iframe 支持截图复制
+- 📸 预览区与 HTML iframe 支持截图复制，HTML 截图会保留外部图标字体
 - 🌙 亮色/暗色主题，支持嵌入主站时跨窗口同步
 
-**Tech Stack:** React 19, Vite, Tailwind CSS v4 CLI, Mermaid, react-markdown, html2canvas, json5, react-syntax-highlighter, lucide-react
+**Tech Stack:** React 19, Vite, Tailwind CSS v4 CLI, Mermaid, react-markdown, html2canvas, modern-screenshot, json5, react-syntax-highlighter, lucide-react
 
 **[查看详情 →](./ai-artifact-desk)**
 

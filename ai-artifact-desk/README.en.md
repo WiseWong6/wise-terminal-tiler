@@ -44,6 +44,7 @@ Edit on the left, render on the right:
 - Sandboxed HTML preview in an iframe, plus open-in-new-window and HTML file export.
 - Theme support for light and dark mode, including parent-page theme sync when embedded.
 - Mobile-friendly layout with a collapsible editor and icon-first toolbar actions.
+- Built-in release notes in the About modal, grouped by date for quick product updates.
 
 ---
 
@@ -113,7 +114,8 @@ Mermaid, JSON, and HTML blocks inside Markdown render together in the same previ
 | mermaid | Diagram rendering |
 | react-markdown + remark-gfm + rehype-raw | Markdown rendering |
 | react-syntax-highlighter | Code highlighting |
-| html2canvas | Screenshots and image copy |
+| html2canvas | Mixed/Markdown screenshots and image copy |
+| modern-screenshot | HTML preview screenshot copy |
 | json5 | Lenient JSON parsing |
 | lucide-react | Icons |
 

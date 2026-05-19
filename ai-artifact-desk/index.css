@@ -12,14 +12,15 @@ html, body {
 }
 
 .mermaid-diagram-canvas {
-  width: min(100%, 580px);
+  width: max-content;
+  max-width: none;
   margin: 0 auto;
   display: flex;
   justify-content: center;
 }
 
 .mermaid-container svg {
-  max-width: 100%;
+  max-width: none;
   height: auto;
 }
 
