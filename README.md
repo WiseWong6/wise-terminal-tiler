@@ -26,8 +26,8 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 4 个独立
 ├─────────────┬─────────────┬──────────────────────────────────┤
 │  内容编辑   │  窗口管理    │           Agent 可视化            │
 ├─────────────┼─────────────┼──────────────────────────────────┤
-│  mixed-     │  terminal-  │         openclaw_game            │
-│   preview   │   -tiler    │                                  │
+│  ai-        │  ai-        │         openclaw_game            │
+│ artifact   │ workstation │                                  │
 ├─────────────┴─────────────┴──────────────────────────────────┤
 │                        工具定位                               │
 │           写内容 → 整理窗口 → 看 Agent 运行                    │
@@ -38,9 +38,9 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 4 个独立
 
 ## 项目一览
 
-### 🖥️ [terminal-tiler](./terminal-tiler)
+### 🖥️ [ai-workstation](./ai-workstation)
 
-> macOS 终端窗口平铺工具 —— 一键整理散乱的终端窗口
+> AI Workstation / AI工位分配 —— 一键安排散乱的终端窗口
 
 **核心功能**
 - ⌨️ 快捷键一键整理 2~10 个终端窗口
@@ -51,13 +51,13 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 4 个独立
 
 **Tech Stack:** Swift, AppleScript, Shell
 
-**[查看详情 →](./terminal-tiler)**
+**[查看详情 →](./ai-workstation)**
 
 ---
 
-### 📝 [mixed-preview](./mixed-preview)
+### 📝 [ai-artifact-desk](./ai-artifact-desk)
 
-> 混合内容实时预览 —— 一个编辑器搞定 Markdown、Mermaid、JSON、HTML
+> AI Artifact Desk / AI文档渲染 —— 一个编辑器搞定 Markdown、Mermaid、JSON、HTML
 
 **核心功能**
 - 🔄 实时预览，600ms 防抖
@@ -71,7 +71,7 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 4 个独立
 
 **Tech Stack:** React 19, Vite, Mermaid, react-markdown, html2canvas, json5, react-syntax-highlighter, lucide-react, Tailwind CSS
 
-**[查看详情 →](./mixed-preview)**
+**[查看详情 →](./ai-artifact-desk)**
 
 ---
 
@@ -110,7 +110,7 @@ git clone https://github.com/WiseWong6/wise-labs.git
 cd wise-labs
 
 # 进入任意项目
-cd terminal-tiler / mixed-preview / openclaw_game
+cd ai-workstation / ai-artifact-desk / openclaw_game
 
 # 安装依赖并运行
 npm install
@@ -129,7 +129,7 @@ npm run dev
 
 **AI 优先**
 
-所有工具都考虑 AI Agent 的使用场景。terminal-tiler 支持 Agent 直接调用，model-eval-workbench 用于评测模型能力，openclaw_game 用于可视化 Agent 运行。
+所有工具都考虑 AI Agent 的使用场景。ai-workstation 支持 Agent 直接调用，model-eval-workbench 用于评测模型能力，openclaw_game 用于可视化 Agent 运行。
 
 **本地优先**
 

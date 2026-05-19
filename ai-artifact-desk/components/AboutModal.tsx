@@ -60,7 +60,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       >
         {/* Header */}
         <div className="sticky top-0 bg-slate-50 px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">关于 Mixed Preview</h2>
+          <h2 className="text-lg font-bold text-slate-900">关于 AI Artifact Desk</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"

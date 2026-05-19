@@ -1,4 +1,4 @@
-# wise-terminal-tiler
+# AI Workstation
 
 <p align="center">
   <a href="./README.en.md">English</a> | <a href="./README.md">中文</a>
@@ -26,11 +26,11 @@
 
 ## Quick Start
 
-This is a subproject inside the `wise-labs` repo. The installer lives in this directory's `scripts/` folder, so if you are at the repo root, run `cd terminal-tiler` first.
+This is a subproject inside the `wise-labs` repo. The installer lives in this directory's `scripts/` folder, so if you are at the repo root, run `cd ai-workstation` first.
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
-cd wise-labs/terminal-tiler
+cd wise-labs/ai-workstation
 
 mkdir -p ~/.local/bin
 ./scripts/install-agent-commands
@@ -46,7 +46,7 @@ Claude Code may feel better in Ghostty, while other tasks still live in iTerm2 o
 
 Manual resizing works, but it breaks flow every time.
 
-`wise-terminal-tiler` is built for that exact gap: restore order to a multi-terminal workspace with a single shortcut.
+`wise-ai-workstation` is built for that exact gap: restore order to a multi-terminal workspace with a single shortcut.
 
 ---
 
@@ -92,11 +92,11 @@ Manual resizing works, but it breaks flow every time.
 
 This project is intentionally built for macOS and MacBook-style terminal workflows. If you mainly work on Windows, this project does not support that workflow yet, though you are free to adapt the code yourself.
 
-Note: the installer path is `terminal-tiler/scripts/install-agent-commands`, not `./scripts/install-agent-commands` from the repo root.
+Note: the installer path is `ai-workstation/scripts/install-agent-commands`, not `./scripts/install-agent-commands` from the repo root.
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
-cd wise-labs/terminal-tiler
+cd wise-labs/ai-workstation
 
 mkdir -p ~/.local/bin
 ./scripts/install-agent-commands

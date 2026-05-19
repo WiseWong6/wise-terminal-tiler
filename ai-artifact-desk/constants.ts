@@ -22,7 +22,7 @@ This editor supports **Markdown**, <span style="color: red;">HTML</span>, \`JSON
 JSON blocks are automatically parsed and formatted:
 \`\`\`json
 {
-  "project": "Mixed Preview",
+  "project": "AI Artifact Desk",
   "features": ["Markdown", "HTML", "JSON", "Mermaid"],
   "version": 2.0
 }
@@ -124,7 +124,7 @@ export const SAMPLE_HTML = `<!DOCTYPE html>
 </head>
 <body>
   <div class="card">
-    <h2>Mixed Preview</h2>
+    <h2>AI Artifact Desk</h2>
     <p>A real-time mixed content editor with instant preview.</p>
     <span class="badge green">Active</span>
     <span class="badge blue">v1.0</span>

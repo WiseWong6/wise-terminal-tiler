@@ -1,4 +1,4 @@
-# mixed-preview
+# ai-artifact-desk
 
 <p align="center">
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
@@ -6,7 +6,7 @@
 
 > A real-time mixed content editor.
 >
-> Write Markdown, HTML, JSON, and Mermaid in one editor — see the rendered result instantly on the right.
+> AI Artifact Desk renders Markdown, HTML, JSON, and Mermaid in one editor — see the rendered result instantly on the right.
 >
 > Stop switching between four different tools when writing docs.
 
@@ -16,7 +16,7 @@ Edit on the left, live render on the right:
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Mixed Preview                [samples]  ⚙  ☰       │
+│  AI Artifact Desk                [samples]  ⚙  ☰       │
 ├──────────────┬───────────────────────────────────────┤
 │              │                                       │
 │   Editor     │   Preview                             │
@@ -47,7 +47,7 @@ Edit on the left, live render on the right:
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
-cd wise-labs/mixed-preview
+cd wise-labs/ai-artifact-desk
 
 npm install
 npm run dev

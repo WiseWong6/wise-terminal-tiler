@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Code, Coffee, Github, Layers, ArrowLeft, Home } from 'lucide-react';
 import Editor from './components/Editor';
-import MixedPreview from './components/MixedPreview';
+import ArtifactPreview from './components/ArtifactPreview';
 import AboutModal from './components/AboutModal';
 import { useDebounce } from './hooks/useDebounce';
 import {
@@ -142,7 +142,7 @@ const App: React.FC = () => {
             <Code className="text-white w-5 h-5" />
           </div>
           <div className="flex flex-col">
-            <h1 className="text-base font-bold text-slate-900 leading-tight">混合格式渲染器</h1>
+            <h1 className="text-base font-bold text-slate-900 leading-tight">AI文档渲染</h1>
             <span className="text-[11px] text-slate-500 leading-tight mt-0.5">一个窗口解决html、markdown、mermaid、json渲染及复制问题</span>
           </div>
         </div>
@@ -183,7 +183,7 @@ const App: React.FC = () => {
           </div>
 
           <a
-            href="https://github.com/WiseWong6/wise-labs/tree/main/mixed-preview"
+            href="https://github.com/WiseWong6/wise-labs/tree/main/ai-artifact-desk"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
@@ -227,7 +227,7 @@ const App: React.FC = () => {
         />
 
         <div className="h-full min-h-0 min-w-0 flex-1 overflow-hidden bg-slate-50">
-          <MixedPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} isMobile={isMobile} onToggleSidebar={isMobile ? toggleMobileEditor : toggleSidebar} />
+          <ArtifactPreview code={debouncedCode} onError={setError} isCollapsed={isCollapsed} isMobile={isMobile} onToggleSidebar={isMobile ? toggleMobileEditor : toggleSidebar} />
         </div>
       </main>
 

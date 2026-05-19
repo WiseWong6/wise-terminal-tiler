@@ -1,10 +1,10 @@
-# Mixed Preview
+# AI Artifact Desk
 
 <p align="center">
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
 </p>
 
-> 一个实时混合内容编辑器 —— 在同一个编辑器里写 Markdown、Mermaid、JSON、HTML
+> AI文档渲染工具 —— 在同一个编辑器里写 Markdown、Mermaid、JSON、HTML
 >
 > 右边立刻看到渲染结果，不用在四个工具之间来回切换
 
@@ -16,7 +16,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│  Mixed Preview                [samples]  ⚙  ☰       │
+│  AI Artifact Desk                [samples]  ⚙  ☰       │
 ├──────────────┬───────────────────────────────────────┤
 │              │                                       │
 │   Editor     │   Preview                             │
@@ -51,7 +51,7 @@
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
-cd wise-labs/mixed-preview
+cd wise-labs/ai-artifact-desk
 
 npm install
 npm run dev

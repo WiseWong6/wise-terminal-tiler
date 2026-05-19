@@ -42,7 +42,7 @@ const getMermaid = async () => {
   return mermaidPromise;
 };
 
-interface MixedPreviewProps {
+interface ArtifactPreviewProps {
   code: string;
   onError: (error: string | null) => void;
   isCollapsed?: boolean;
@@ -1365,7 +1365,7 @@ const getTextCaptureRects = (root: HTMLElement) => {
   return rects;
 };
 
-const getMixedPreviewCaptureRect = (root: HTMLElement) => {
+const getArtifactPreviewCaptureRect = (root: HTMLElement) => {
   const rootRect = root.getBoundingClientRect();
   const rootStyle = window.getComputedStyle(root);
   const maxRootWidth = Math.max(root.scrollWidth, root.clientWidth, Math.ceil(rootRect.width));
@@ -1525,7 +1525,7 @@ const capturePreviewElementScreenshot = async (element: HTMLElement): Promise<Ht
   await waitForHtmlPreviewFrames(element);
 
   const html2canvas = (await import('html2canvas')).default;
-  const { x, y, width, height } = getMixedPreviewCaptureRect(element);
+  const { x, y, width, height } = getArtifactPreviewCaptureRect(element);
   const scale = 2;
   const windowWidth = Math.max(width + x, element.scrollWidth, element.clientWidth);
   const windowHeight = Math.max(height + y, element.scrollHeight, element.clientHeight);
@@ -1670,7 +1670,7 @@ hr{border-color:#374151}
 }
 `;
 
-const wrapStandaloneHtml = (html: string, title: string = 'Mixed Preview') => {
+const wrapStandaloneHtml = (html: string, title: string = 'AI Artifact Desk') => {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -1689,7 +1689,7 @@ ${html}
 
 const buildStandaloneRawHtml = (html: string) => {
   const trimmed = html.trim();
-  if (!trimmed) return wrapStandaloneHtml('', 'Mixed Preview');
+  if (!trimmed) return wrapStandaloneHtml('', 'AI Artifact Desk');
 
   const hasDocType = /^<!doctype\s+html[\s>]/i.test(trimmed);
   const hasHtmlTag = /^<html[\s>]/i.test(trimmed);
@@ -1702,7 +1702,7 @@ const buildStandaloneRawHtml = (html: string) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mixed Preview</title>
+<title>AI Artifact Desk</title>
 <style>html,body{margin:0;padding:0;background:#fff;}</style>
 </head>
 <body>
@@ -1733,7 +1733,7 @@ const preparePortablePreviewClone = async (
 
 const buildStandaloneHtml = async (sourceRoot: HTMLElement): Promise<string> => {
   const { clone } = await preparePortablePreviewClone(sourceRoot, { cleanup: true });
-  return wrapStandaloneHtml(clone.innerHTML, 'Mixed Preview');
+  return wrapStandaloneHtml(clone.innerHTML, 'AI Artifact Desk');
 };
 
 const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPayload> => {
@@ -2086,7 +2086,7 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
   );
 };
 
-const MixedPreview: React.FC<MixedPreviewProps> = ({
+const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   code,
   onError,
   isCollapsed = false,
@@ -2342,7 +2342,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
     try {
       newWindow.opener = null;
       newWindow.document.write(
-        '<!doctype html><html><head><meta charset="UTF-8"><title>Mixed Preview</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#475569;">生成预览中...</body></html>',
+        '<!doctype html><html><head><meta charset="UTF-8"><title>AI Artifact Desk</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#475569;">生成预览中...</body></html>',
       );
       newWindow.document.close();
     } catch {
@@ -2373,7 +2373,7 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'mixed-preview.html';
+      a.download = 'ai-artifact-desk.html';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -2600,4 +2600,4 @@ const MixedPreview: React.FC<MixedPreviewProps> = ({
   );
 };
 
-export default MixedPreview;
+export default ArtifactPreview;

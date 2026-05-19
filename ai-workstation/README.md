@@ -1,12 +1,12 @@
-# wise-terminal-tiler
+# AI Workstation
 
 <p align="center">
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
 </p>
 
-> 一个面向 macOS 的终端窗口平铺小工具。
+> AI工位分配工具，一个面向 macOS 的终端窗口平铺小工具。
 >
-> 用一个快捷键，把散乱的多个终端窗口整理成清晰可用的工作区。
+> 用一个快捷键，把散乱的多个终端窗口安排成清晰可用的工作区。
 >
 > 专门为多终端、多显示器、键盘优先的工作流设计。
 >
@@ -28,11 +28,11 @@
 
 ## 快速开始 | Quick Start
 
-这是 `wise-labs` 仓库里的一个子项目，安装脚本在当前目录的 `scripts/` 里；如果你现在人在仓库根目录，先执行 `cd terminal-tiler`。
+这是 `wise-labs` 仓库里的一个子项目，安装脚本在当前目录的 `scripts/` 里；如果你现在人在仓库根目录，先执行 `cd ai-workstation`。
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
-cd wise-labs/terminal-tiler
+cd wise-labs/ai-workstation
 
 mkdir -p ~/.local/bin
 ./scripts/install-agent-commands
@@ -109,11 +109,11 @@ mkdir -p ~/.local/bin
 
 仅适用于 macOS / MacBook 工作流；如果你主要在 Windows 上使用终端，这个项目还不具备这个能力，当然你可以去改造这份代码。
 
-说明：安装脚本路径是 `terminal-tiler/scripts/install-agent-commands`，不是仓库根目录的 `./scripts/install-agent-commands`。
+说明：安装脚本路径是 `ai-workstation/scripts/install-agent-commands`，不是仓库根目录的 `./scripts/install-agent-commands`。
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
-cd wise-labs/terminal-tiler
+cd wise-labs/ai-workstation
 
 mkdir -p ~/.local/bin
 ./scripts/install-agent-commands
