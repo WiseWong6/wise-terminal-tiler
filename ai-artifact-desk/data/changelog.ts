@@ -5,6 +5,10 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    date: '2026-05-20',
+    summary: 'HTML 截图复制现在会保留外部图标字体，粘贴后图标显示更完整。',
+  },
+  {
     date: '2026-05-19',
     summary: 'AI Artifact Desk 独立工具上线，优化黑夜模式显示、加载速度。',
   },
