@@ -43,6 +43,25 @@ const App: React.FC = () => {
   const isDragging = useRef(false);
   const sampleMenuRef = useRef<HTMLDivElement>(null);
 
+  const requestParentClose = useCallback(() => {
+    if (!isInIframe) return false;
+    try {
+      const parentWindow = window.parent as Window & { closeTab?: () => void };
+      if (typeof parentWindow.closeTab === 'function') {
+        parentWindow.closeTab();
+        return true;
+      }
+    } catch {
+      // Cross-origin parents still receive the postMessage fallback below.
+    }
+    try {
+      window.parent.postMessage({ type: 'close-tab' }, '*');
+    } catch {
+      // Ignore close requests that cannot be delivered.
+    }
+    return false;
+  }, [isInIframe]);
+
   const [debouncedCode, flushCode] = useDebounce(code, 600);
 
   useEffect(() => {
@@ -123,7 +142,7 @@ const App: React.FC = () => {
                 if (isFromMainSite) {
                   e.preventDefault();
                   if (isInIframe) {
-                    window.parent.postMessage({ type: 'close-tab' }, '*');
+                    requestParentClose();
                   } else if (window.history.length > 1) {
                     window.history.back();
                   } else {
@@ -143,18 +162,20 @@ const App: React.FC = () => {
           </div>
           <div className="flex flex-col">
             <h1 className="text-base font-bold text-slate-900 leading-tight">AI文档渲染</h1>
-            <span className="text-[11px] text-slate-500 leading-tight mt-0.5">一个窗口解决html、markdown、mermaid、json渲染及复制问题</span>
+            <span className="text-[11px] text-slate-500 leading-tight mt-0.5">一个编辑器解决HTML、JSON、Markdown、Mermaid 图编辑、可视化、导出问题</span>
           </div>
         </div>
 
         <div className="flex items-center space-x-4">
-          <div className="hidden md:block relative" ref={sampleMenuRef}>
+          <div className="relative" ref={sampleMenuRef}>
             <button
               onClick={() => setIsSampleMenuOpen(prev => !prev)}
-              className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 transition-colors"
+              className="flex h-8 w-8 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-slate-500 transition-colors hover:text-slate-900 hover:bg-slate-200/50 md:h-auto md:w-auto md:justify-start md:rounded-none md:hover:bg-transparent"
+              title="案例"
+              aria-label="案例"
             >
               <Layers size={14} />
-              案例
+              <span className="hidden md:inline">案例</span>
             </button>
 
             {isSampleMenuOpen && (

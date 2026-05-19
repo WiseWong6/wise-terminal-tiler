@@ -60,7 +60,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
       >
         {/* Header */}
         <div className="sticky top-0 bg-slate-50 px-6 pt-6 pb-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900">关于 AI Artifact Desk</h2>
+          <h2 className="text-lg font-bold text-slate-900">关于 AI文档渲染</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
@@ -79,7 +79,7 @@ const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <ul className="space-y-2 text-sm text-slate-600 leading-relaxed">
               <li className="flex gap-2">
                 <span className="text-indigo-600 mt-0.5 shrink-0">•</span>
-                <span>一个编辑器解决 HTML、JSON、Markdown、Mermaid 图渲染问题，再也不用频繁切换</span>
+                <span>一个编辑器解决HTML、JSON、Markdown、Mermaid 图编辑、可视化、导出问题</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-indigo-600 mt-0.5 shrink-0">•</span>

@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {
+  AlertCircle,
   Download,
   FileDown,
   ExternalLink,
@@ -23,24 +24,54 @@ import {
 } from 'lucide-react';
 import ZoomableWrapper from './ZoomableWrapper';
 import JSON5 from 'json5';
+import {
+  collectClipboardTypes,
+  findAcceptedClipboardType,
+  formatClipboardVerificationError,
+} from '../utils/clipboard-feedback.js';
+import {
+  buildStandaloneThemeCss,
+  buildHtmlPreviewThemeBridge,
+  injectThemeBridgeIntoHtmlDocument,
+  pickAdaptiveTextColor,
+} from '../utils/html-theme.js';
+import { resolveMeasuredHtmlPreviewExtent } from '../utils/html-preview-size.js';
+import {
+  applyMermaidNodeTextContrast,
+  getMermaidConfig,
+  getMermaidDiagramScale,
+} from '../utils/mermaid-theme.js';
 
-// Lazy-load mermaid to reduce initial bundle size
-let mermaidPromise: Promise<typeof import('mermaid').default> | null = null;
+// Eagerly preload mermaid so first render is instant
+const mermaidPromise: Promise<typeof import('mermaid').default> = import('mermaid').then((mod) => mod.default);
 
-const getMermaid = async () => {
-  if (!mermaidPromise) {
-    mermaidPromise = import('mermaid').then((mod) => {
-      mod.default.initialize({
-        startOnLoad: false,
-        theme: 'default',
-        securityLevel: 'loose',
-        fontFamily: 'Inter, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
-      });
-      return mod.default;
+const getMermaid = () => mermaidPromise;
+
+const MERMAID_DEFAULT_SCALE = 1;
+const MERMAID_CANVAS_BASE_WIDTH = 580;
+const MERMAID_VIEWBOX_PADDING = 8;
+const LUCIDE_ICON_VIEWBOX = '0 0 24 24';
+const MERMAID_RENDER_STAGGER_MS = 80;
+const MERMAID_RENDER_MAX_DELAY_MS = 1200;
+const MERMAID_READY_TIMEOUT_MS = 25000;
+const HTML_PREVIEW_MIN_HEIGHT = 200;
+const HTML_PREVIEW_MAX_HEIGHT = 8000;
+const HTML_PREVIEW_SETTLE_MS = 150;
+const HTML_PREVIEW_HEIGHT_EPSILON = 4;
+
+const waitForDelay = (ms: number) =>
+  new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+const waitForNextPaint = () =>
+  new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
     });
-  }
-  return mermaidPromise;
-};
+  });
+
+const getMermaidCanvasScale = (code: string) => getMermaidDiagramScale(code);
 
 interface ArtifactPreviewProps {
   code: string;
@@ -67,6 +98,25 @@ type HtmlCapture = {
   blob: Blob;
   width: number;
   height: number;
+};
+
+type PreviewTheme = 'dark' | 'light';
+
+type ImageCopyAction = 'mermaid' | 'mixed' | 'html';
+
+type ImageCopyFeedbackStatus = 'idle' | 'loading' | 'success' | 'warning' | 'error';
+
+type ImageCopyFeedback = {
+  action: ImageCopyAction | null;
+  status: ImageCopyFeedbackStatus;
+  message: string | null;
+};
+
+type MermaidRenderStatus = {
+  total: number;
+  ready: number;
+  error: number;
+  pending: number;
 };
 
 type CaptureRect = {
@@ -271,9 +321,69 @@ const FLOW_TEXT_TAGS = new Set([
 const RESPONSIVE_MEDIA_TAGS = new Set(['img', 'svg', 'canvas', 'video']);
 const PRESERVE_LAYOUT_ATTR = 'data-copy-preserve-layout';
 const HTML2CANVAS_UNSUPPORTED_COLOR_FUNCTION_RE = /\b(?:oklch|oklab|lch|lab|color-mix)\(/i;
+const HTML_THEME_SKIP_TAGS = new Set(['code', 'iframe', 'img', 'pre', 'script', 'style', 'svg', 'template']);
 
 const getReadableText = (element: HTMLElement) =>
   (element.innerText || element.textContent || '').replace(/\n{3,}/g, '\n\n').trim();
+
+const getDocumentTheme = (): PreviewTheme =>
+  document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+
+const isTransparentOrEmptyCssColor = (value: string | null | undefined) =>
+  !value || value === 'transparent' || value === 'rgba(0, 0, 0, 0)' || value === 'rgba(0,0,0,0)';
+
+const shouldSkipAdaptiveTextNode = (element: HTMLElement) => {
+  const tagName = element.tagName.toLowerCase();
+  return HTML_THEME_SKIP_TAGS.has(tagName) || Boolean(element.closest('code, pre, svg, iframe'));
+};
+
+const adaptHtmlFragmentTextColors = (root: HTMLElement, theme: PreviewTheme) => {
+  const elements = [root, ...Array.from(root.querySelectorAll<HTMLElement>('*'))];
+
+  for (const element of elements) {
+    if (shouldSkipAdaptiveTextNode(element)) continue;
+    if (!getReadableText(element)) continue;
+
+    const computedStyle = window.getComputedStyle(element);
+    if (isTransparentOrEmptyCssColor(computedStyle.backgroundColor)) continue;
+    if (element.style.color) continue;
+
+    const inheritedColor = element.parentElement
+      ? window.getComputedStyle(element.parentElement).color
+      : null;
+    const adaptiveColor = pickAdaptiveTextColor({
+      theme,
+      backgroundColor: computedStyle.backgroundColor,
+      computedColor: computedStyle.color,
+      inheritedColor,
+    });
+
+    if (adaptiveColor) {
+      element.style.color = adaptiveColor;
+    }
+  }
+};
+
+const useDocumentTheme = () => {
+  const [theme, setTheme] = useState<PreviewTheme>(() => getDocumentTheme());
+
+  useEffect(() => {
+    setTheme(getDocumentTheme());
+
+    const observer = new MutationObserver(() => {
+      setTheme(getDocumentTheme());
+    });
+
+    observer.observe(document.documentElement, {
+      attributeFilter: ['data-theme'],
+      attributes: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  return theme;
+};
 
 const looksLikeHtml = (rawCode: string) => {
   const trimmed = rawCode.trim();
@@ -357,11 +467,39 @@ const appendInlineStyles = (source: Element, target: Element, options: InlineSty
     }
   }
 
+  const SVG_ROOT_LAYOUT_PROPS = [
+    'display',
+    'width',
+    'max-width',
+    'height',
+    'margin',
+    'vertical-align',
+    'overflow',
+  ];
+
   Array.from(source.children).forEach((sourceChild, index) => {
     const targetChild = target.children[index];
-    if (targetChild) {
-      appendInlineStyles(sourceChild, targetChild, options);
+    if (!targetChild) return;
+
+    // Mermaid SVGs are self-contained (embedded <style> + presentation attributes).
+    // Skip the entire subtree and only copy layout props on the <svg> root to avoid
+    // hundreds of thousands of getComputedStyle calls on SVG sub-elements.
+    if (
+      sourceChild.tagName.toLowerCase() === 'svg' &&
+      sourceChild.closest('[data-copy-role="mermaid-block"]')
+    ) {
+      const childComputedStyle = view?.getComputedStyle(sourceChild);
+      const childTargetStyle = (targetChild as SVGElement).style;
+      if (childComputedStyle && childTargetStyle) {
+        SVG_ROOT_LAYOUT_PROPS.forEach((prop) => {
+          const value = childComputedStyle.getPropertyValue(prop);
+          if (value) childTargetStyle.setProperty(prop, value);
+        });
+      }
+      return;
     }
+
+    appendInlineStyles(sourceChild, targetChild, options);
   });
 };
 
@@ -384,9 +522,13 @@ const cleanupPortableHtml = (root: HTMLElement) => {
         element.removeAttribute(attr.name);
       }
     });
-    element.removeAttribute('class');
-    element.removeAttribute('id');
-    element.removeAttribute('contenteditable');
+    if (element.closest('svg')) {
+      element.removeAttribute('contenteditable');
+    } else {
+      element.removeAttribute('class');
+      element.removeAttribute('id');
+      element.removeAttribute('contenteditable');
+    }
 
     const tagName = element.tagName.toLowerCase();
     const preserveLayout = preserveLayoutElements.has(element);
@@ -701,7 +843,6 @@ const copyRichHtmlPayload = async (payloadPromise: Promise<CopyPayload>) => {
 const copyImageBlobPayload = async (
   imageBlobPromise: Promise<Blob>,
   htmlPromise: Promise<string>,
-  plain: string,
 ) => {
   let imageBlobCache: Blob | null = null;
   let htmlCache: string | null = null;
@@ -721,7 +862,6 @@ const copyImageBlobPayload = async (
         new ClipboardItem({
           'image/png': trackedImageBlob,
           'text/html': trackedHtml.then((html) => new Blob([html], { type: 'text/html' })),
-          'text/plain': new Blob([plain], { type: 'text/plain' }),
         }),
       ]);
       await Promise.all([trackedImageBlob, trackedHtml]);
@@ -736,7 +876,43 @@ const copyImageBlobPayload = async (
     htmlCache ? Promise.resolve(htmlCache) : trackedHtml,
   ]);
   if (!imageBlob) throw new Error('Failed to create image blob');
-  await copyRichHtml(html, plain, { preferSelection: true });
+  await copyRichHtml(html, '', { preferSelection: true });
+};
+
+const isClipboardVerificationUnavailableError = (error: unknown) => {
+  if (error instanceof DOMException) {
+    return (
+      error.name === 'NotAllowedError' ||
+      error.name === 'SecurityError' ||
+      error.name === 'NotSupportedError'
+    );
+  }
+
+  if (error instanceof Error) {
+    return /permission|denied|gesture|not allowed|not supported|unavailable/i.test(error.message);
+  }
+
+  return false;
+};
+
+const readClipboardTypes = async () => {
+  if (!navigator.clipboard?.read) {
+    return { status: 'unavailable' as const };
+  }
+
+  try {
+    const items = await navigator.clipboard.read();
+    return {
+      status: 'readable' as const,
+      availableTypes: collectClipboardTypes(items),
+    };
+  } catch (error) {
+    if (isClipboardVerificationUnavailableError(error)) {
+      return { status: 'unavailable' as const };
+    }
+
+    throw error;
+  }
 };
 
 const detectContentType = (rawCode: string): ContentType => {
@@ -763,6 +939,7 @@ const detectContentType = (rawCode: string): ContentType => {
     'sequenceDiagram',
     'classDiagram',
     'stateDiagram',
+    'stateDiagram-v2',
     'erDiagram',
     'gantt',
     'pie',
@@ -770,6 +947,24 @@ const detectContentType = (rawCode: string): ContentType => {
     'mindmap',
     'timeline',
     'gitGraph',
+    'architecture',
+    'architecture-beta',
+    'quadrantChart',
+    'xychart-beta',
+    'sankey-beta',
+    'treemap',
+    'venn-beta',
+    'requirementDiagram',
+    'kanban',
+    'ishikawa-beta',
+    'block-beta',
+    'block',
+    'packet-beta',
+    'C4Context',
+    'C4Container',
+    'C4Component',
+    'C4Dynamic',
+    'C4Deployment',
   ];
   const firstWord = trimmed.split(/\s+/)[0];
   if (mermaidKeywords.includes(firstWord)) {
@@ -816,13 +1011,98 @@ const getSvgLogicalRect = (svgEl: Element) => {
   };
 };
 
+const isMermaidSvg = (svg: SVGElement) => {
+  if (svg.closest('[data-copy-remove="true"]')) return false;
+  if (svg.id.startsWith('mermaid-')) return true;
+
+  const viewBox = svg.getAttribute('viewBox')?.trim();
+  return Boolean(viewBox && viewBox !== LUCIDE_ICON_VIEWBOX && svg.closest('.mermaid-container'));
+};
+
+const normalizeMermaidSvg = (svg: string, theme: PreviewTheme = 'light') => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svg, 'image/svg+xml');
+  let svgEl = doc.documentElement;
+
+  if (svgEl.tagName.toLowerCase() !== 'svg') {
+    const template = document.createElement('template');
+    template.innerHTML = svg.trim();
+    const htmlSvg = template.content.querySelector('svg');
+    if (htmlSvg?.namespaceURI !== 'http://www.w3.org/2000/svg') {
+      return applyMermaidNodeTextContrast(svg, theme);
+    }
+    svgEl = htmlSvg;
+  }
+
+  const svgElement = svgEl as unknown as SVGSVGElement;
+  const baseRect = getSvgLogicalRect(svgElement);
+  svgElement.setAttribute(
+    'viewBox',
+    [
+      baseRect.x - MERMAID_VIEWBOX_PADDING,
+      baseRect.y - MERMAID_VIEWBOX_PADDING,
+      baseRect.width + MERMAID_VIEWBOX_PADDING * 2,
+      baseRect.height + MERMAID_VIEWBOX_PADDING * 2,
+    ].join(' '),
+  );
+  svgElement.setAttribute('width', '100%');
+  svgElement.removeAttribute('height');
+  svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+
+  svgElement.style.removeProperty('max-width');
+  svgElement.style.setProperty('width', '100%');
+  svgElement.style.setProperty('height', 'auto');
+  svgElement.style.setProperty('display', 'block');
+
+  if (!svgElement.getAttribute('xmlns')) {
+    svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+
+  return applyMermaidNodeTextContrast(new XMLSerializer().serializeToString(svgElement), theme);
+};
+
+const getSvgElementForCapture = (source: string | SVGSVGElement) => {
+  if (typeof source !== 'string') {
+    return source.cloneNode(true) as SVGSVGElement;
+  }
+
+  const parser = new DOMParser();
+  const parsed = parser.parseFromString(source, 'image/svg+xml');
+  const parsedSvg = parsed.documentElement;
+  if (parsedSvg.tagName.toLowerCase() === 'svg') {
+    return parsedSvg as unknown as SVGSVGElement;
+  }
+
+  // Some Mermaid diagrams include markup that survives browser rendering but
+  // does not round-trip through the strict XML parser. Fall back to HTML
+  // parsing so we can serialize the live SVG structure for export.
+  const template = document.createElement('template');
+  template.innerHTML = source.trim();
+  const htmlSvg = template.content.querySelector('svg');
+  if (htmlSvg?.namespaceURI === 'http://www.w3.org/2000/svg') {
+    return htmlSvg.cloneNode(true) as SVGSVGElement;
+  }
+
+  throw new Error('Invalid SVG content');
+};
+
 // Convert Mermaid SVG to PNG without pixel-cropping or forced upscaling.
-const svgToPngCapture = (svgContent: string): Promise<HtmlCapture> => {
+const svgToPngCapture = (svgSource: string | SVGSVGElement): Promise<HtmlCapture> => {
   return new Promise((resolve, reject) => {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(svgContent, 'image/svg+xml');
-    const svgEl = doc.documentElement;
-    const baseRect = getSvgLogicalRect(svgEl);
+    let svgElement: SVGSVGElement;
+    try {
+      svgElement = getSvgElementForCapture(svgSource);
+    } catch (err) {
+      reject(err instanceof Error ? err : new Error('Invalid SVG content'));
+      return;
+    }
+
+    if (svgElement.tagName.toLowerCase() !== 'svg') {
+      reject(new Error('Invalid SVG content'));
+      return;
+    }
+
+    const baseRect = getSvgLogicalRect(svgElement);
     const logicalWidth = Math.ceil(baseRect.width + MERMAID_IMAGE_PADDING * 2);
     const logicalHeight = Math.ceil(baseRect.height + MERMAID_IMAGE_PADDING * 2);
     const renderScale = Math.max(
@@ -836,7 +1116,7 @@ const svgToPngCapture = (svgContent: string): Promise<HtmlCapture> => {
     const renderWidth = Math.max(1, Math.ceil(logicalWidth * renderScale));
     const renderHeight = Math.max(1, Math.ceil(logicalHeight * renderScale));
 
-    svgEl.setAttribute(
+    svgElement.setAttribute(
       'viewBox',
       [
         baseRect.x - MERMAID_IMAGE_PADDING,
@@ -845,18 +1125,18 @@ const svgToPngCapture = (svgContent: string): Promise<HtmlCapture> => {
         logicalHeight,
       ].join(' '),
     );
-    svgEl.setAttribute('width', String(renderWidth));
-    svgEl.setAttribute('height', String(renderHeight));
-    svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    (svgEl as SVGElement).style.removeProperty('max-width');
-    (svgEl as SVGElement).style.removeProperty('width');
-    (svgEl as SVGElement).style.removeProperty('height');
-    if (!svgEl.getAttribute('xmlns')) {
-      svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    svgElement.setAttribute('width', String(renderWidth));
+    svgElement.setAttribute('height', String(renderHeight));
+    svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svgElement.style.removeProperty('max-width');
+    svgElement.style.removeProperty('width');
+    svgElement.style.removeProperty('height');
+    if (!svgElement.getAttribute('xmlns')) {
+      svgElement.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     }
 
     const serializer = new XMLSerializer();
-    const newSvgString = serializer.serializeToString(svgEl);
+    const newSvgString = serializer.serializeToString(svgElement);
 
     const img = new Image();
     const svg64 = btoa(unescape(encodeURIComponent(newSvgString)));
@@ -1046,25 +1326,26 @@ const cropCanvasToContent = (canvas: HTMLCanvasElement, padding = 0) => {
   return croppedCanvas;
 };
 
+const MERMAID_IMAGE_BATCH_SIZE = 4;
+
 const replaceMermaidBlocksWithImages = async (root: HTMLElement) => {
   const mermaidBlocks = Array.from(
     root.querySelectorAll<HTMLElement>('[data-copy-role="mermaid-block"]'),
   );
+  if (mermaidBlocks.length === 0) return false;
   let convertedCount = 0;
-  let failedCount = 0;
 
-  await Promise.all(
-    mermaidBlocks.map(async (block) => {
-      const svg = Array.from(block.querySelectorAll('svg')).find(
-        (svg) => !svg.closest('[data-copy-remove="true"]'),
-      );
-      if (!svg) return;
+  for (let batchStart = 0; batchStart < mermaidBlocks.length; batchStart += MERMAID_IMAGE_BATCH_SIZE) {
+    const batch = mermaidBlocks.slice(batchStart, batchStart + MERMAID_IMAGE_BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map(async (block) => {
+        const svg = Array.from(block.querySelectorAll<SVGElement>('svg')).find(isMermaidSvg);
+        if (!svg) return;
 
-      try {
-        const capture = await svgToPngCapture(svg.outerHTML);
-        const imageUrl = await blobToDataUrl(capture.blob);
-        const imageWrapper = document.createElement('div');
-        imageWrapper.innerHTML = createResponsiveImageHtml(imageUrl, 'Mermaid diagram', capture);
+      const capture = await svgToPngCapture(svg);
+      const imageUrl = await blobToDataUrl(capture.blob);
+      const imageWrapper = document.createElement('div');
+      imageWrapper.innerHTML = createResponsiveImageHtml(imageUrl, '', capture);
         const replacement = imageWrapper.firstElementChild;
         const replaceTarget =
           block.parentElement?.tagName.toLowerCase() === 'pre' ? block.parentElement : block;
@@ -1072,16 +1353,14 @@ const replaceMermaidBlocksWithImages = async (root: HTMLElement) => {
         if (replacement) {
           replaceTarget.replaceWith(replacement);
         }
-        convertedCount++;
-      } catch (err) {
-        console.warn('Failed to convert Mermaid SVG for rich copy:', err);
-        failedCount++;
-      }
-    }),
-  );
+      }),
+    );
 
-  if (failedCount > 0) {
-    throw new Error('Failed to convert Mermaid diagram to image for rich copy');
+    convertedCount += results.filter((r) => r.status === 'fulfilled').length;
+  }
+
+  if (convertedCount === 0 && mermaidBlocks.length > 0) {
+    throw new Error(`Failed to convert all ${mermaidBlocks.length} Mermaid diagram(s) to image for rich copy`);
   }
 
   return convertedCount > 0;
@@ -1089,8 +1368,37 @@ const replaceMermaidBlocksWithImages = async (root: HTMLElement) => {
 
 const getMermaidSvgs = (root: HTMLElement) =>
   Array.from(root.querySelectorAll<SVGElement>('[data-copy-role="mermaid-block"] svg')).filter(
-    (svg) => !svg.closest('[data-copy-remove="true"]'),
+    isMermaidSvg,
   );
+
+const getMermaidRenderStatus = (root: HTMLElement): MermaidRenderStatus => {
+  const blocks = Array.from(
+    root.querySelectorAll<HTMLElement>('[data-copy-role="mermaid-block"]'),
+  );
+  let ready = 0;
+  let error = 0;
+
+  blocks.forEach((block) => {
+    if (block.dataset.mermaidReady === 'error') {
+      error++;
+      return;
+    }
+
+    const svg = Array.from(block.querySelectorAll<SVGElement>('svg')).find(isMermaidSvg);
+    if (svg) {
+      ready++;
+    }
+  });
+
+  return {
+    total: blocks.length,
+    ready,
+    error,
+    pending: Math.max(0, blocks.length - ready - error),
+  };
+};
+
+const getMermaidCompleteCount = (status: MermaidRenderStatus) => status.ready + status.error;
 
 const buildMermaidImagesPayload = async (sourceRoot: HTMLElement): Promise<CopyPayload> => {
   const svgs = getMermaidSvgs(sourceRoot);
@@ -1098,13 +1406,20 @@ const buildMermaidImagesPayload = async (sourceRoot: HTMLElement): Promise<CopyP
     throw new Error('No Mermaid diagrams are ready to copy');
   }
 
-  const imageHtml = await Promise.all(
-    svgs.map(async (svg, index) => {
-      const capture = await svgToPngCapture(svg.outerHTML);
+  const imageHtml: string[] = [];
+  for (const [index, svg] of svgs.entries()) {
+    try {
+      const capture = await svgToPngCapture(svg);
       const imageUrl = await blobToDataUrl(capture.blob);
-      return createResponsiveImageHtml(imageUrl, `Mermaid diagram ${index + 1}`, capture);
-    }),
-  );
+      imageHtml.push(createResponsiveImageHtml(imageUrl, '', capture));
+    } catch (err) {
+      console.warn(`Failed to convert Mermaid diagram #${index + 1} to PNG:`, err);
+    }
+  }
+
+  if (imageHtml.length === 0) {
+    throw new Error(`Failed to convert all ${svgs.length} Mermaid diagram(s) to PNG`);
+  }
 
   const wrapper = document.createElement('section');
   wrapper.style.cssText = [
@@ -1117,7 +1432,7 @@ const buildMermaidImagesPayload = async (sourceRoot: HTMLElement): Promise<CopyP
 
   return {
     html: wrapper.outerHTML,
-    plain: svgs.length === 1 ? 'Mermaid diagram' : `Mermaid diagrams (${svgs.length})`,
+    plain: '',
     hasEmbeddedImages: true,
   };
 };
@@ -1564,8 +1879,11 @@ const capturePreviewElementScreenshot = async (element: HTMLElement): Promise<Ht
   });
 };
 
-const capturePortablePreviewScreenshot = async (sourceRoot: HTMLElement): Promise<HtmlCapture> => {
-  const { clone } = await preparePortablePreviewClone(sourceRoot, { stripChromeOnly: true });
+const capturePortablePreviewScreenshot = async (
+  sourceRoot: HTMLElement,
+  theme: PreviewTheme,
+): Promise<HtmlCapture> => {
+  const { clone } = await preparePortablePreviewClone(sourceRoot, theme, { stripChromeOnly: true });
   const sourceRect = sourceRoot.getBoundingClientRect();
   const host = document.createElement('div');
   host.style.cssText = [
@@ -1637,47 +1955,18 @@ const wrapArticleHtml = (html: string, source: HTMLElement) => {
   return wrapper.outerHTML;
 };
 
-const STANDALONE_HTML_CSS = `
-*,*::before,*::after{box-sizing:border-box}
-body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Inter','PingFang SC','Microsoft YaHei',sans-serif;line-height:1.75;color:#1f2937;background:#f8fafc}
-main.container{max-width:900px;margin:0 auto;padding:40px 24px;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(0,0,0,0.04)}
-h1,h2,h3,h4,h5,h6{margin-top:1.5em;margin-bottom:0.75em;line-height:1.3;font-weight:600;color:#111827}
-p{margin:.75em 0}
-a{color:#2563eb;text-decoration:none}
-a:hover{text-decoration:underline}
-img,svg{max-width:100%;height:auto;display:block;margin:1em auto}
-pre{background:#1e293b;color:#e2e8f0;padding:16px;border-radius:8px;overflow-x:auto;font-family:'JetBrains Mono','Fira Code',monospace;font-size:14px;line-height:1.6;margin:1em 0}
-code{background:#f1f5f9;color:#c2410c;padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.875em}
-pre code{background:transparent;color:inherit;padding:0}
-blockquote{margin:1em 0;padding:.5em 1em;border-left:4px solid #e5e7eb;color:#4b5563;background:#f9fafb}
-table{width:100%;border-collapse:collapse;margin:1em 0}
-th,td{border:1px solid #e5e7eb;padding:8px 12px;text-align:left}
-th{background:#f9fafb;font-weight:600}
-ul,ol{margin:.75em 0;padding-left:1.5em}
-li{margin:.25em 0}
-hr{border:0;border-top:1px solid #e5e7eb;margin:1.5em 0}
-@media (prefers-color-scheme:dark){
-body{background:#0f172a;color:#e2e8f0}
-main.container{background:#1e293b;box-shadow:0 0 40px rgba(0,0,0,0.2)}
-h1,h2,h3,h4,h5,h6{color:#f1f5f9}
-a{color:#60a5fa}
-blockquote{border-left-color:#374151;color:#9ca3af;background:#1f2937}
-pre{background:#0f172a}
-code{background:#1f2937;color:#fb923c}
-th,td{border-color:#374151}
-th{background:#1f2937}
-hr{border-color:#374151}
-}
-`;
-
-const wrapStandaloneHtml = (html: string, title: string = 'AI Artifact Desk') => {
+const wrapStandaloneHtml = (
+  html: string,
+  title: string = 'AI文档渲染',
+  theme: PreviewTheme = 'light',
+) => {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escapeHtmlAttribute(title)}</title>
-<style>${STANDALONE_HTML_CSS}</style>
+<style>${buildStandaloneThemeCss(theme)}</style>
 </head>
 <body>
 <main class="container">
@@ -1687,14 +1976,14 @@ ${html}
 </html>`;
 };
 
-const buildStandaloneRawHtml = (html: string) => {
+const buildStandaloneRawHtml = (html: string, theme: PreviewTheme) => {
   const trimmed = html.trim();
-  if (!trimmed) return wrapStandaloneHtml('', 'AI Artifact Desk');
+  if (!trimmed) return wrapStandaloneHtml('', 'AI文档渲染', theme);
 
   const hasDocType = /^<!doctype\s+html[\s>]/i.test(trimmed);
   const hasHtmlTag = /^<html[\s>]/i.test(trimmed);
   if (hasDocType || hasHtmlTag) {
-    return trimmed;
+    return injectThemeBridgeIntoHtmlDocument(trimmed, theme);
   }
 
   return `<!DOCTYPE html>
@@ -1702,8 +1991,9 @@ const buildStandaloneRawHtml = (html: string) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Artifact Desk</title>
-<style>html,body{margin:0;padding:0;background:#fff;}</style>
+<title>AI文档渲染</title>
+<style>html,body{margin:0;padding:0;}</style>
+${buildHtmlPreviewThemeBridge(theme)}
 </head>
 <body>
 ${html}
@@ -1711,15 +2001,52 @@ ${html}
 </html>`;
 };
 
+const normalizeMermaidSvgsInClone = (clone: HTMLElement, theme: PreviewTheme) => {
+  const blocks = Array.from(
+    clone.querySelectorAll<HTMLElement>('[data-copy-role="mermaid-block"]'),
+  );
+  blocks.forEach((block) => {
+    const svg = Array.from(block.querySelectorAll<SVGElement>('svg')).find(isMermaidSvg);
+    if (!svg) return;
+    try {
+      const normalized = normalizeMermaidSvg(svg.outerHTML, theme);
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = normalized;
+      const newSvg = wrapper.querySelector('svg');
+      if (newSvg) {
+        svg.replaceWith(newSvg);
+      }
+    } catch {
+      // leave original svg if normalization fails
+    }
+    Array.from(block.attributes).forEach((attr) => {
+      if (attr.name.startsWith('data-copy-')) {
+        block.removeAttribute(attr.name);
+      }
+    });
+  });
+};
+
 const preparePortablePreviewClone = async (
   sourceRoot: HTMLElement,
-  options: { cleanup?: boolean; stripChromeOnly?: boolean } = {},
+  theme: PreviewTheme,
+  options: { cleanup?: boolean; stripChromeOnly?: boolean; convertMermaidToImages?: boolean } = {},
 ) => {
   await waitForHtmlPreviewFrames(sourceRoot);
   const clone = sourceRoot.cloneNode(true) as HTMLElement;
+
+  // Normalize Mermaid SVGs before inlining styles so computed styles land on the normalized SVG.
+  if (options.convertMermaidToImages === false) {
+    normalizeMermaidSvgsInClone(clone, theme);
+  }
+
   appendInlineStyles(sourceRoot, clone);
   await expandHtmlPreviews(sourceRoot, clone);
-  const hasEmbeddedImages = await replaceMermaidBlocksWithImages(clone);
+
+  let hasEmbeddedImages = false;
+  if (options.convertMermaidToImages !== false) {
+    hasEmbeddedImages = await replaceMermaidBlocksWithImages(clone);
+  }
 
   if (options.cleanup) {
     cleanupPortableHtml(clone);
@@ -1731,13 +2058,22 @@ const preparePortablePreviewClone = async (
   return { clone, hasEmbeddedImages };
 };
 
-const buildStandaloneHtml = async (sourceRoot: HTMLElement): Promise<string> => {
-  const { clone } = await preparePortablePreviewClone(sourceRoot, { cleanup: true });
-  return wrapStandaloneHtml(clone.innerHTML, 'AI Artifact Desk');
+const buildStandaloneHtml = async (
+  sourceRoot: HTMLElement,
+  theme: PreviewTheme,
+): Promise<string> => {
+  const { clone } = await preparePortablePreviewClone(sourceRoot, theme, {
+    cleanup: true,
+    convertMermaidToImages: false,
+  });
+  return wrapStandaloneHtml(clone.innerHTML, 'AI文档渲染', theme);
 };
 
-const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPayload> => {
-  const { clone, hasEmbeddedImages } = await preparePortablePreviewClone(sourceRoot, {
+const buildPreviewCopyPayload = async (
+  sourceRoot: HTMLElement,
+  theme: PreviewTheme,
+): Promise<CopyPayload> => {
+  const { clone, hasEmbeddedImages } = await preparePortablePreviewClone(sourceRoot, theme, {
     cleanup: true,
   });
 
@@ -1751,44 +2087,37 @@ const buildPreviewCopyPayload = async (sourceRoot: HTMLElement): Promise<CopyPay
 // A component to render a single Mermaid diagram with independent zoom controls
 const MermaidDiagram: React.FC<{
   code: string;
+  theme: PreviewTheme;
   onSvgReady?: (svg: string) => void;
-}> = ({ code, onSvgReady }) => {
+}> = ({ code, theme, onSvgReady }) => {
   const [svgContent, setSvgContent] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const [scale, setScale] = useState(1);
+  const [scale, setScale] = useState(MERMAID_DEFAULT_SCALE);
+  const onSvgReadyRef = useRef(onSvgReady);
+  const blockRef = useRef<HTMLDivElement>(null);
+  const canvasWidth = Math.round(MERMAID_CANVAS_BASE_WIDTH * getMermaidCanvasScale(code));
   const clampScale = (v: number) => Math.max(0.5, Math.min(3, v));
 
   useEffect(() => {
+    onSvgReadyRef.current = onSvgReady;
+  }, [onSvgReady]);
+
+  useEffect(() => {
     let isMounted = true;
+    let renderTimer: number | null = null;
+    setSvgContent('');
     const renderDiagram = async () => {
       try {
         const mermaid = await getMermaid();
+        mermaid.initialize(getMermaidConfig(theme));
         await mermaid.parse(code);
         const id = `mermaid-${Math.random().toString(36).substring(2, 11)}`;
         const { svg } = await mermaid.render(id, code);
         if (isMounted) {
-          let cleanedSvg = svg.replace(/style="[^"]*max-width:[^"]*"/gi, '');
-          // Expand viewBox to prevent CJK text clipping, then normalize width
-          const vbMatch = cleanedSvg.match(/viewBox="([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)"/);
-          if (vbMatch) {
-            const [, vbX, vbY, vbW, vbH] = vbMatch.map(Number);
-            const pad = 16;
-            cleanedSvg = cleanedSvg.replace(
-              /viewBox="[^"]*"/,
-              `viewBox="${vbX} ${vbY - pad} ${vbW} ${vbH + pad * 2}"`,
-            );
-            cleanedSvg = cleanedSvg.replace(
-              /width="[^"]*"/,
-              `width="100%"`,
-            );
-            cleanedSvg = cleanedSvg.replace(
-              /<svg /,
-              `<svg style="height:auto;" `,
-            );
-          }
+          const cleanedSvg = normalizeMermaidSvg(svg, theme);
           setSvgContent(cleanedSvg);
           setError(null);
-          onSvgReady?.(cleanedSvg);
+          onSvgReadyRef.current?.(cleanedSvg);
         }
       } catch (e) {
         if (isMounted) {
@@ -1796,19 +2125,26 @@ const MermaidDiagram: React.FC<{
         }
       }
     };
-    // Defer Mermaid rendering to yield main thread for loading animation
-    const scheduleRender = () => {
-      if (typeof window.requestIdleCallback === 'function') {
-        window.requestIdleCallback(() => renderDiagram(), { timeout: 300 });
-      } else {
-        window.setTimeout(renderDiagram, 0);
-      }
-    };
-    scheduleRender();
+    const blockIndex = blockRef.current
+      ? Array.from(document.querySelectorAll('[data-copy-role="mermaid-block"]')).indexOf(blockRef.current)
+      : 0;
+    const renderDelay =
+      blockIndex >= 2 ? Math.min(blockIndex * MERMAID_RENDER_STAGGER_MS, MERMAID_RENDER_MAX_DELAY_MS) : 0;
+    renderTimer = window.setTimeout(() => {
+      if (!isMounted) return;
+      void renderDiagram();
+    }, renderDelay);
     return () => {
       isMounted = false;
+      if (renderTimer !== null) {
+        window.clearTimeout(renderTimer);
+      }
     };
-  }, [code, onSvgReady]);
+  }, [code, theme]);
+
+  useEffect(() => {
+    setScale(MERMAID_DEFAULT_SCALE);
+  }, [code]);
 
   const handleDownloadSVG = () => {
     if (!svgContent) return;
@@ -1827,7 +2163,8 @@ const MermaidDiagram: React.FC<{
     if (!svgContent) return;
 
     try {
-      const capture = await svgToPngCapture(svgContent);
+      const svg = Array.from(blockRef.current?.querySelectorAll<SVGElement>('svg') ?? []).find(isMermaidSvg);
+      const capture = await svgToPngCapture(svg ?? svgContent);
       const pngUrl = URL.createObjectURL(capture.blob);
       const a = document.createElement('a');
       a.href = pngUrl;
@@ -1843,7 +2180,11 @@ const MermaidDiagram: React.FC<{
 
   if (error) {
     return (
-      <div className="p-4 bg-red-50 text-red-700 font-mono text-xs rounded border border-red-200 overflow-auto">
+      <div
+        className="p-4 bg-red-50 text-red-700 font-mono text-xs rounded border border-red-200 overflow-auto"
+        data-copy-role="mermaid-block"
+        data-mermaid-ready="error"
+      >
         Error: {error}
       </div>
     );
@@ -1851,8 +2192,10 @@ const MermaidDiagram: React.FC<{
 
   return (
     <div
+      ref={blockRef}
       className="my-4 rounded shadow-sm border border-slate-200 bg-white"
       data-copy-role="mermaid-block"
+      data-mermaid-ready={svgContent ? 'ready' : 'pending'}
     >
       <div
         className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between"
@@ -1905,13 +2248,21 @@ const MermaidDiagram: React.FC<{
           </button>
         </div>
       </div>
-      <ZoomableWrapper scale={scale} className="mermaid-container flex justify-center p-4 min-h-[200px]">
-        {svgContent ? (
-          <div dangerouslySetInnerHTML={{ __html: svgContent }} />
-        ) : (
+      <ZoomableWrapper
+        scale={scale}
+        fullWidth
+        className="mermaid-container flex justify-center p-4 [&_svg]:max-w-full [&_svg]:h-auto"
+      >
+        {!svgContent ? (
           <div className="flex items-center justify-center w-full">
             <Loader2 size={20} className="animate-spin text-indigo-400" />
           </div>
+        ) : (
+          <div
+            className="mermaid-diagram-canvas"
+            style={{ width: `min(100%, ${canvasWidth}px)` }}
+            dangerouslySetInnerHTML={{ __html: svgContent }}
+          />
         )}
       </ZoomableWrapper>
     </div>
@@ -1979,46 +2330,130 @@ const JsonViewer: React.FC<{ code: string; onFormatted?: (formatted: string) => 
   );
 };
 
-// Script injected into HtmlPreview iframe to report content height via postMessage.
+// Script injected into HtmlPreview iframe to report content dimensions via postMessage.
 // Uses a unique ID (replaced at injection time) so multiple previews on one page don't collide.
 const HEIGHT_REPORTER_SCRIPT = (id: string) => `
 <script>
 (function() {
-  var reportHeight = function() {
+  var resolveMeasuredHtmlPreviewExtent = ${resolveMeasuredHtmlPreviewExtent.toString()};
+  var anchor = document.querySelector('[data-html-preview-anchor="${id}"]');
+  var reportTimer = null;
+  var rafPending = false;
+  var lastReportedHeight = 0;
+  var measureContentHeight = function() {
     var body = document.body;
     var html = document.documentElement;
-    if (!body || !html) return;
-    var h = Math.max(
-      body.scrollHeight, html.scrollHeight,
-      body.getBoundingClientRect().height,
-      html.getBoundingClientRect().height,
-      200
-    );
-    parent.postMessage({ type: 'html-preview-height', id: '${id}', height: h }, '*');
+    if (!body || !html) return 0;
+    var bodyRect = body.getBoundingClientRect();
+    var htmlRect = html.getBoundingClientRect();
+    var originTop = Math.min(bodyRect.top, htmlRect.top, 0);
+    var maxBottom = Math.max(bodyRect.top, htmlRect.top);
+    var nodes = body.querySelectorAll('*');
+    for (var i = 0; i < nodes.length; i += 1) {
+      var node = nodes[i];
+      if (node === anchor || node.tagName === 'SCRIPT') continue;
+      var rect = node.getBoundingClientRect();
+      if (!rect || (rect.width === 0 && rect.height === 0)) continue;
+      maxBottom = Math.max(maxBottom, rect.bottom);
+    }
+    if (anchor) {
+      var anchorRect = anchor.getBoundingClientRect();
+      maxBottom = Math.max(maxBottom, anchorRect.top);
+    }
+    var bodyStyle = window.getComputedStyle(body);
+    var paddingBottom = parseFloat(bodyStyle.paddingBottom) || 0;
+    return Math.max(0, Math.ceil(maxBottom - originTop + paddingBottom));
   };
-  var ro = new ResizeObserver(reportHeight);
+  var getSize = function() {
+    var body = document.body;
+    var html = document.documentElement;
+    if (!body || !html) return null;
+    var bodyRect = body.getBoundingClientRect();
+    var htmlRect = html.getBoundingClientRect();
+    var height = resolveMeasuredHtmlPreviewExtent({
+      contentExtent: measureContentHeight(),
+      scrollExtent: Math.max(body.scrollHeight, html.scrollHeight),
+      rectExtent: Math.max(bodyRect.height, htmlRect.height),
+      viewportExtent: window.innerHeight,
+      minExtent: 200
+    });
+    return { height: height };
+  };
+  var reportSize = function() {
+    var size = getSize();
+    if (!size) return;
+    if (lastReportedHeight > 0 && Math.abs(size.height - lastReportedHeight) <= 1) return;
+    lastReportedHeight = size.height;
+    parent.postMessage({
+      type: 'html-preview-size',
+      id: '${id}',
+      height: size.height
+    }, '*');
+  };
+  var scheduleReport = function() {
+    if (rafPending) return;
+    rafPending = true;
+    var raf = window.requestAnimationFrame || function(callback) { return setTimeout(callback, 16); };
+    raf(function() {
+      rafPending = false;
+      if (reportTimer) clearTimeout(reportTimer);
+      reportTimer = setTimeout(function() {
+        reportTimer = null;
+        reportSize();
+      }, 80);
+    });
+  };
+  var bindImageLoadReports = function() {
+    var images = document.querySelectorAll('img');
+    for (var i = 0; i < images.length; i += 1) {
+      var image = images[i];
+      if (image.dataset.htmlPreviewSizeBound === 'true') continue;
+      image.dataset.htmlPreviewSizeBound = 'true';
+      if (image.complete) continue;
+      image.addEventListener('load', scheduleReport, { once: true });
+      image.addEventListener('error', scheduleReport, { once: true });
+    }
+  };
+  var ro = new ResizeObserver(scheduleReport);
   ro.observe(document.body);
   ro.observe(document.documentElement);
-  reportHeight();
-  [100, 300, 800, 1500, 2500].forEach(function(ms) {
-    setTimeout(reportHeight, ms);
+  var mo = new MutationObserver(function() {
+    bindImageLoadReports();
+    scheduleReport();
   });
+  mo.observe(document.body, {
+    attributes: true,
+    childList: true,
+    subtree: true,
+    attributeFilter: ['class', 'height', 'src', 'style', 'width']
+  });
+  bindImageLoadReports();
+  reportSize();
+  window.addEventListener('load', scheduleReport, { once: true });
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(scheduleReport).catch(function() {});
+  }
 })();
 </script>`;
 
 // Wrap user HTML with resource isolation
-const wrapHtmlPreview = (rawCode: string, id: string): string => {
+const wrapHtmlPreview = (rawCode: string, id: string, theme: PreviewTheme): string => {
   const trimmed = rawCode.trim();
   const hasDocType = /^<!doctype\s+html/i.test(trimmed);
   const hasHtmlTag = /^<html[\s>]/i.test(trimmed);
-  const reporter = HEIGHT_REPORTER_SCRIPT(id);
+  const reporterAnchor = `<div data-html-preview-anchor="${id}" aria-hidden="true" style="display:block;height:0;overflow:hidden"></div>`;
+  const reporter = `${reporterAnchor}${HEIGHT_REPORTER_SCRIPT(id)}`;
+  const themeBridge = buildHtmlPreviewThemeBridge(theme);
 
   if (hasDocType || hasHtmlTag) {
     let result = trimmed;
     if (/<head[\s>]/i.test(result)) {
-      result = result.replace(/(<head[^>]*>)/i, '$1<base href="about:blank">');
+      result = result.replace(/(<head[^>]*>)/i, `$1<base href="about:blank">${themeBridge}`);
     } else {
-      result = result.replace(/(<html[^>]*>)/i, '$1<head><base href="about:blank"></head>');
+      result = result.replace(
+        /(<html[^>]*>)/i,
+        `$1<head><base href="about:blank">${themeBridge}</head>`,
+      );
     }
     // Inject height reporter before </body>
     if (/<\/body>/i.test(result)) {
@@ -2029,32 +2464,123 @@ const wrapHtmlPreview = (rawCode: string, id: string): string => {
     return result;
   }
 
-  return `<!DOCTYPE html><html><head><base href="about:blank"><meta charset="UTF-8"></head><body>${rawCode}${reporter}</body></html>`;
+  return `<!DOCTYPE html><html><head><base href="about:blank"><meta charset="UTF-8">${themeBridge}</head><body>${rawCode}${reporter}</body></html>`;
 };
 
 // A component to render HTML in an isolated iframe.
 // Height is reported by the iframe content via postMessage — no contentDocument access needed,
 // so we can keep the sandbox restrictive (no allow-same-origin).
 // Each instance gets a stable random ID so multiple previews on one page don't collide.
-const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
+const HtmlPreview: React.FC<{ code: string; theme: PreviewTheme }> = ({ code, theme }) => {
   const id = useMemo(() => Math.random().toString(36).slice(2, 8), []);
-  const [iframeHeight, setIframeHeight] = useState(400);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const settleTimerRef = useRef<number | null>(null);
+  const loadFallbackTimerRef = useRef<number | null>(null);
+  const pendingHeightRef = useRef<number | null>(null);
+  const committedHeightRef = useRef(HTML_PREVIEW_MIN_HEIGHT);
+  const hasSettledHeightRef = useRef(false);
+  const [previewHeight, setPreviewHeight] = useState(HTML_PREVIEW_MIN_HEIGHT);
   const [iframeLoaded, setIframeLoaded] = useState(false);
-  const wrappedCode = useMemo(() => wrapHtmlPreview(code, id), [code, id]);
+  const [hasSettledHeight, setHasSettledHeight] = useState(false);
+  const wrappedCode = useMemo(() => wrapHtmlPreview(code, id, theme), [code, id, theme]);
+  const isIframeReady = iframeLoaded && hasSettledHeight;
+
+  const clearSettleTimer = useCallback(() => {
+    if (settleTimerRef.current) {
+      window.clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
+  }, []);
+
+  const clearLoadFallbackTimer = useCallback(() => {
+    if (loadFallbackTimerRef.current) {
+      window.clearTimeout(loadFallbackTimerRef.current);
+      loadFallbackTimerRef.current = null;
+    }
+  }, []);
+
+  const normalizePreviewHeight = useCallback((height: number) => {
+    if (!Number.isFinite(height)) return HTML_PREVIEW_MIN_HEIGHT;
+    return Math.min(
+      HTML_PREVIEW_MAX_HEIGHT,
+      Math.max(HTML_PREVIEW_MIN_HEIGHT, Math.ceil(height)),
+    );
+  }, []);
+
+  const queueSettledHeight = useCallback(
+    (height: number) => {
+      pendingHeightRef.current = normalizePreviewHeight(height);
+      clearSettleTimer();
+      settleTimerRef.current = window.setTimeout(() => {
+        settleTimerRef.current = null;
+        const nextHeight = pendingHeightRef.current ?? HTML_PREVIEW_MIN_HEIGHT;
+        pendingHeightRef.current = null;
+        const shouldCommit =
+          !hasSettledHeightRef.current ||
+          Math.abs(nextHeight - committedHeightRef.current) > HTML_PREVIEW_HEIGHT_EPSILON;
+
+        if (shouldCommit) {
+          committedHeightRef.current = nextHeight;
+          setPreviewHeight(nextHeight);
+        }
+
+        if (!hasSettledHeightRef.current) {
+          hasSettledHeightRef.current = true;
+          setHasSettledHeight(true);
+        }
+      }, HTML_PREVIEW_SETTLE_MS);
+    },
+    [clearSettleTimer, normalizePreviewHeight],
+  );
 
   useEffect(() => {
+    clearSettleTimer();
+    clearLoadFallbackTimer();
+    pendingHeightRef.current = null;
+    committedHeightRef.current = HTML_PREVIEW_MIN_HEIGHT;
+    hasSettledHeightRef.current = false;
     setIframeLoaded(false);
-  }, [wrappedCode]);
+    setHasSettledHeight(false);
+    setPreviewHeight(HTML_PREVIEW_MIN_HEIGHT);
+  }, [clearLoadFallbackTimer, clearSettleTimer, wrappedCode]);
 
   useEffect(() => {
     const handleMessage = (e: MessageEvent) => {
+      if (e.source !== iframeRef.current?.contentWindow) return;
+      if (e.origin !== 'null' && e.origin !== window.location.origin) return;
+      if (
+        e.data?.type === 'html-preview-size' &&
+        e.data.id === id &&
+        typeof e.data.height === 'number'
+      ) {
+        queueSettledHeight(e.data.height);
+      }
       if (e.data?.type === 'html-preview-height' && e.data.id === id && typeof e.data.height === 'number') {
-        setIframeHeight(Math.min(Math.ceil(e.data.height), 8000));
+        queueSettledHeight(e.data.height);
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [id]);
+  }, [id, queueSettledHeight]);
+
+  useEffect(
+    () => () => {
+      clearSettleTimer();
+      clearLoadFallbackTimer();
+    },
+    [clearLoadFallbackTimer, clearSettleTimer],
+  );
+
+  const handleIframeLoad = useCallback(() => {
+    setIframeLoaded(true);
+    clearLoadFallbackTimer();
+    loadFallbackTimerRef.current = window.setTimeout(() => {
+      loadFallbackTimerRef.current = null;
+      if (!hasSettledHeightRef.current) {
+        queueSettledHeight(HTML_PREVIEW_MIN_HEIGHT);
+      }
+    }, HTML_PREVIEW_SETTLE_MS * 3);
+  }, [clearLoadFallbackTimer, queueSettledHeight]);
 
   return (
     <div
@@ -2067,19 +2593,27 @@ const HtmlPreview: React.FC<{ code: string }> = ({ code }) => {
       >
         <span>HTML Preview</span>
       </div>
-      <div className="relative w-full bg-white" style={{ height: `${iframeHeight}px` }}>
-        {!iframeLoaded && (
+      <div
+        className="relative w-full overflow-hidden bg-white"
+        style={{ height: `${previewHeight}px` }}
+      >
+        {!isIframeReady && (
           <div className="absolute inset-0 flex items-center justify-center bg-white z-10">
             <Loader2 size={20} className="animate-spin text-indigo-400" />
           </div>
         )}
         <iframe
+          ref={iframeRef}
           srcDoc={wrappedCode}
-          sandbox="allow-scripts allow-same-origin allow-popups-to-escape-sandbox"
+          sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
           className={`w-full h-full border-none bg-white transition-opacity duration-300 ${
-            iframeLoaded ? 'opacity-100' : 'opacity-0'
+            isIframeReady ? 'opacity-100' : 'opacity-0'
           }`}
-          onLoad={() => setIframeLoaded(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+          }}
+          onLoad={handleIframeLoad}
         />
       </div>
     </div>
@@ -2093,11 +2627,16 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   isMobile,
   onToggleSidebar,
 }) => {
+  const currentTheme = useDocumentTheme();
   const [exportAction, setExportAction] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [copiedImages, setCopiedImages] = useState(false);
-  const [copiedScreenshot, setCopiedScreenshot] = useState(false);
+  const [imageCopyFeedback, setImageCopyFeedback] = useState<ImageCopyFeedback>({
+    action: null,
+    status: 'idle',
+    message: null,
+  });
   const [mermaidCount, setMermaidCount] = useState(0);
+  const [mermaidDomTotal, setMermaidDomTotal] = useState(0);
   const [isRendering, setIsRendering] = useState(true);
   const previewRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -2106,10 +2645,13 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   const mermaidSvgRef = useRef<string>('');
   const jsonFormattedRef = useRef<string>('');
   const renderTimeoutRef = useRef<number | null>(null);
+  const imageCopyFeedbackTimerRef = useRef<number | null>(null);
 
   const refreshMermaidCount = useCallback(() => {
     window.requestAnimationFrame(() => {
-      setMermaidCount(previewRef.current ? getMermaidSvgs(previewRef.current).length : 0);
+      const summary = previewRef.current ? getMermaidRenderStatus(previewRef.current) : null;
+      setMermaidCount(summary ? getMermaidCompleteCount(summary) : 0);
+      setMermaidDomTotal(summary?.total ?? 0);
     });
   }, []);
 
@@ -2124,6 +2666,161 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
     }
   }, [contentType]);
   const canCopyRichText = contentType !== 'html' && contentType !== 'mixed';
+
+  const clearImageCopyFeedbackTimer = useCallback(() => {
+    if (imageCopyFeedbackTimerRef.current) {
+      window.clearTimeout(imageCopyFeedbackTimerRef.current);
+      imageCopyFeedbackTimerRef.current = null;
+    }
+  }, []);
+
+  const queueImageCopyFeedbackReset = useCallback(
+    (delayMs: number) => {
+      clearImageCopyFeedbackTimer();
+      imageCopyFeedbackTimerRef.current = window.setTimeout(() => {
+        setImageCopyFeedback({
+          action: null,
+          status: 'idle',
+          message: null,
+        });
+      }, delayMs);
+    },
+    [clearImageCopyFeedbackTimer],
+  );
+
+  const setImageCopyFeedbackState = useCallback(
+    (
+      action: ImageCopyAction,
+      status: Exclude<ImageCopyFeedbackStatus, 'idle'>,
+      message: string | null,
+      resetDelayMs?: number,
+    ) => {
+      clearImageCopyFeedbackTimer();
+      setImageCopyFeedback({ action, status, message });
+      if (typeof resetDelayMs === 'number') {
+        queueImageCopyFeedbackReset(resetDelayMs);
+      }
+    },
+    [clearImageCopyFeedbackTimer, queueImageCopyFeedbackReset],
+  );
+
+  const resetImageCopyFeedback = useCallback(() => {
+    clearImageCopyFeedbackTimer();
+    setImageCopyFeedback({
+      action: null,
+      status: 'idle',
+      message: null,
+    });
+  }, [clearImageCopyFeedbackTimer]);
+
+  const getImageCopyLoadingMessage = useCallback((action: ImageCopyAction) => {
+    switch (action) {
+      case 'mixed':
+        return null;
+      case 'html':
+        return '正在生成 HTML 预览截图并写入剪贴板...';
+      case 'mermaid':
+      default:
+        return '正在生成 Mermaid 图片并写入剪贴板...';
+    }
+  }, []);
+
+  const waitForMinimumImageCopyLoading = useCallback(async (loadingStartedAt: number) => {
+    const remainingMs = 320 - (Date.now() - loadingStartedAt);
+    if (remainingMs > 0) {
+      await waitForDelay(remainingMs);
+    }
+  }, []);
+
+  const finalizeImageCopyFeedback = useCallback(
+    async (
+      action: ImageCopyAction,
+      loadingStartedAt: number,
+      acceptedTypes: readonly string[],
+      successMessage: string,
+      unavailableMessage: string | null,
+      mismatchMessage?: string | null,
+    ) => {
+      const clipboardState = await readClipboardTypes();
+      await waitForMinimumImageCopyLoading(loadingStartedAt);
+
+      if (clipboardState.status === 'readable') {
+        const matchedType = findAcceptedClipboardType(clipboardState.availableTypes, acceptedTypes);
+        if (matchedType) {
+          setImageCopyFeedbackState(action, 'success', successMessage, 2400);
+          return;
+        }
+
+        setImageCopyFeedbackState(
+          action,
+          'warning',
+          mismatchMessage ??
+            formatClipboardVerificationError(acceptedTypes, clipboardState.availableTypes),
+          4200,
+        );
+        return;
+      }
+
+      setImageCopyFeedbackState(action, 'warning', unavailableMessage, 4200);
+    },
+    [setImageCopyFeedbackState, waitForMinimumImageCopyLoading],
+  );
+
+  const getImageCopyButtonUi = useCallback(
+    (action: ImageCopyAction, idleLabel: string, idleTitle: string) => {
+      const isActive = imageCopyFeedback.action === action;
+      const status = isActive ? imageCopyFeedback.status : 'idle';
+      switch (status) {
+        case 'loading':
+          return {
+            className: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+            icon: <Loader2 size={14} className="animate-spin" />,
+            label: '生成中...',
+            showLabelOnMobile: true,
+            title: imageCopyFeedback.message ?? '生成中...',
+          };
+        case 'success':
+          return {
+            className: 'bg-green-50 text-green-700 border-green-200',
+            icon: <Check size={14} />,
+            label: '已复制图片',
+            showLabelOnMobile: true,
+            title: imageCopyFeedback.message ?? '已复制图片',
+          };
+        case 'warning':
+          return {
+            className: 'bg-amber-50 text-amber-700 border-amber-200',
+            icon: <AlertCircle size={14} />,
+            label: '待粘贴确认',
+            showLabelOnMobile: true,
+            title: imageCopyFeedback.message ?? '待粘贴确认',
+          };
+        case 'error':
+          return {
+            className: 'bg-rose-50 text-rose-700 border-rose-200',
+            icon: <AlertCircle size={14} />,
+            label: '复制失败',
+            showLabelOnMobile: true,
+            title: imageCopyFeedback.message ?? '复制失败',
+          };
+        case 'idle':
+        default:
+          return {
+            className:
+              action === 'html'
+                ? 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
+            icon: action === 'mermaid' ? <ImageIcon size={14} /> : <Camera size={14} />,
+            label: idleLabel,
+            showLabelOnMobile: false,
+            title: idleTitle,
+          };
+      }
+    },
+    [imageCopyFeedback],
+  );
+
+  const isImageCopyBusy = imageCopyFeedback.status === 'loading';
 
   // Pre-process the code to auto-detect pure JSON or pure Mermaid if not wrapped
   const preprocessCode = (input: string) => {
@@ -2159,6 +2856,7 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
       'sequenceDiagram',
       'classDiagram',
       'stateDiagram',
+      'stateDiagram-v2',
       'erDiagram',
       'gantt',
       'pie',
@@ -2166,6 +2864,24 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
       'mindmap',
       'timeline',
       'gitGraph',
+      'architecture',
+      'architecture-beta',
+      'quadrantChart',
+      'xychart-beta',
+      'sankey-beta',
+      'treemap',
+      'venn-beta',
+      'requirementDiagram',
+      'kanban',
+      'ishikawa-beta',
+      'block-beta',
+      'block',
+      'packet-beta',
+      'C4Context',
+      'C4Container',
+      'C4Component',
+      'C4Dynamic',
+      'C4Deployment',
     ];
     const firstWord = trimmed.split(/\s+/)[0];
     if (mermaidKeywords.includes(firstWord)) {
@@ -2176,6 +2892,32 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   };
 
   const processedCode = preprocessCode(code);
+  const isMermaidLoading = mermaidDomTotal > 0 && mermaidCount < mermaidDomTotal;
+  const showLoadingOverlay = Boolean(processedCode && (isRendering || isMermaidLoading));
+
+  const ensureMermaidRendered = useCallback(async () => {
+    if (!previewRef.current) return;
+    const start = Date.now();
+    let lastLogged = 0;
+    while (true) {
+      const { pending, total, ready, error } = getMermaidRenderStatus(previewRef.current);
+      if (pending === 0) return;
+      const elapsed = Date.now() - start;
+      if (elapsed > MERMAID_READY_TIMEOUT_MS) {
+        console.warn(
+          `Mermaid render timeout after ${elapsed}ms: ${pending}/${total} pending, ${ready} ready, ${error} error`,
+        );
+        throw new Error(
+          `Mermaid render timeout: ${pending} diagram(s) still pending after ${Math.round(elapsed / 1000)}s`,
+        );
+      }
+      if (elapsed - lastLogged > 2000) {
+        console.info(`Mermaid render progress: ${ready + error}/${total} complete, ${pending} pending`);
+        lastLogged = elapsed;
+      }
+      await waitForDelay(100);
+    }
+  }, []);
 
   // Show loading immediately when content changes, hide after render settles
   useEffect(() => {
@@ -2213,16 +2955,25 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
     onError(null);
   }, [processedCode, onError]);
 
+  useEffect(() => () => clearImageCopyFeedbackTimer(), [clearImageCopyFeedbackTimer]);
+
   useEffect(() => {
     mermaidSvgRef.current = '';
     setMermaidCount(0);
+    setMermaidDomTotal(0);
+    resetImageCopyFeedback();
     const timers = [
       window.setTimeout(refreshMermaidCount, 200),
       window.setTimeout(refreshMermaidCount, 800),
       window.setTimeout(refreshMermaidCount, 1600),
     ];
     return () => timers.forEach((timer) => window.clearTimeout(timer));
-  }, [processedCode, refreshMermaidCount]);
+  }, [processedCode, refreshMermaidCount, resetImageCopyFeedback]);
+
+  useLayoutEffect(() => {
+    if (!previewRef.current) return;
+    adaptHtmlFragmentTextColors(previewRef.current, currentTheme);
+  }, [currentTheme, processedCode]);
 
   const handleCopy = async () => {
     if (!code.trim()) return;
@@ -2244,7 +2995,8 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
         case 'markdown':
         default: {
           if (!previewRef.current) throw new Error('Preview is not ready');
-          await copyRichHtmlPayload(buildPreviewCopyPayload(previewRef.current));
+          await ensureMermaidRendered();
+          await copyRichHtmlPayload(buildPreviewCopyPayload(previewRef.current, currentTheme));
           break;
         }
       }
@@ -2256,37 +3008,61 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   };
 
   const handleCopyImages = async () => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || isImageCopyBusy) return;
+    const loadingStartedAt = Date.now();
+    setImageCopyFeedbackState('mermaid', 'loading', getImageCopyLoadingMessage('mermaid'));
+    await waitForNextPaint();
     try {
+      await ensureMermaidRendered();
       const svgs = getMermaidSvgs(previewRef.current);
       if (svgs.length === 0) throw new Error('No Mermaid diagrams are ready to copy');
 
       if (svgs.length === 1) {
-        const capturePromise = svgToPngCapture(svgs[0].outerHTML);
+        const capturePromise = svgToPngCapture(svgs[0]);
         const blobPromise = capturePromise.then((capture) => capture.blob);
         const htmlPromise = capturePromise.then(async (capture) => {
           const imageUrl = await blobToDataUrl(capture.blob);
-          return createResponsiveImageHtml(imageUrl, 'Mermaid diagram', capture);
+          return createResponsiveImageHtml(imageUrl, '', capture);
         });
-        await copyImageBlobPayload(blobPromise, htmlPromise, 'Mermaid diagram');
+        await copyImageBlobPayload(blobPromise, htmlPromise);
+        await finalizeImageCopyFeedback(
+          'mermaid',
+          loadingStartedAt,
+          ['image/png'],
+          '已复制 Mermaid 图片到剪贴板',
+          'Mermaid 图片已写入剪贴板，但当前浏览器不支持回读校验，请直接粘贴确认。',
+          'Mermaid 图片已写入剪贴板，但当前浏览器没有暴露 PNG 回读结果；如果在飞书或微信聊天窗里仍粘贴成文字，请改用下载后发送。',
+        );
       } else {
         await copyRichHtmlPayload(buildMermaidImagesPayload(previewRef.current));
+        await finalizeImageCopyFeedback(
+          'mermaid',
+          loadingStartedAt,
+          ['text/html'],
+          `已复制 ${svgs.length} 张 Mermaid 图片到富文本剪贴板`,
+          'Mermaid 图片已写入富文本剪贴板，但当前浏览器不支持回读校验，请直接粘贴确认。',
+          '已复制 Mermaid 多图到富文本剪贴板；飞书和微信聊天窗通常不支持多图富文本粘贴，请优先粘贴到富文本编辑器。',
+        );
       }
-
-      setCopiedImages(true);
-      setTimeout(() => setCopiedImages(false), 2000);
     } catch (err) {
+      const message = err instanceof Error ? err.message : '复制 Mermaid 图片失败';
+      await waitForMinimumImageCopyLoading(loadingStartedAt);
+      setImageCopyFeedbackState('mermaid', 'error', message, 4200);
       console.error('Failed to copy Mermaid images:', err);
     }
   };
 
   const handleCopyMixedScreenshot = async () => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || isImageCopyBusy) return;
+    const loadingStartedAt = Date.now();
+    setImageCopyFeedbackState('mixed', 'loading', getImageCopyLoadingMessage('mixed'));
+    await waitForNextPaint();
     try {
-      const capturePromise = capturePortablePreviewScreenshot(previewRef.current);
+      await ensureMermaidRendered();
+      const capturePromise = capturePortablePreviewScreenshot(previewRef.current, currentTheme);
       const htmlPromise = capturePromise.then(async ({ blob, width, height }) => {
         const imageUrl = await blobToDataUrl(blob);
-        return createEmbeddedPreviewImageHtml(imageUrl, 'Mixed preview screenshot', {
+        return createEmbeddedPreviewImageHtml(imageUrl, '', {
           width,
           height,
         });
@@ -2294,18 +3070,28 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
       await copyImageBlobPayload(
         capturePromise.then(({ blob }) => blob),
         htmlPromise,
-        'Mixed preview screenshot',
       );
-
-      setCopiedImages(true);
-      setTimeout(() => setCopiedImages(false), 2000);
+      await finalizeImageCopyFeedback(
+        'mixed',
+        loadingStartedAt,
+        ['image/png'],
+        '已复制截图到剪贴板',
+        null,
+        null,
+      );
     } catch (err) {
+      const message = err instanceof Error ? err.message : '复制混合预览截图失败';
+      await waitForMinimumImageCopyLoading(loadingStartedAt);
+      setImageCopyFeedbackState('mixed', 'error', message, 4200);
       console.error('Failed to copy mixed preview screenshot:', err);
     }
   };
 
   const handleCopyScreenshot = async () => {
-    if (!previewRef.current) return;
+    if (!previewRef.current || isImageCopyBusy) return;
+    const loadingStartedAt = Date.now();
+    setImageCopyFeedbackState('html', 'loading', getImageCopyLoadingMessage('html'));
+    await waitForNextPaint();
     try {
       const iframe = previewRef.current.querySelector('iframe');
       if (!iframe) throw new Error('HTML preview is not ready');
@@ -2313,7 +3099,7 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
       const capturePromise = captureHtmlFrameScreenshot(iframe);
       const htmlPromise = capturePromise.then(async ({ blob, width, height }) => {
         const imageUrl = await blobToDataUrl(blob);
-        return createEmbeddedPreviewImageHtml(imageUrl, 'HTML preview screenshot', {
+        return createEmbeddedPreviewImageHtml(imageUrl, '', {
           width,
           height,
         });
@@ -2321,12 +3107,19 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
       await copyImageBlobPayload(
         capturePromise.then(({ blob }) => blob),
         htmlPromise,
-        'HTML preview screenshot',
       );
-
-      setCopiedScreenshot(true);
-      setTimeout(() => setCopiedScreenshot(false), 2000);
+      await finalizeImageCopyFeedback(
+        'html',
+        loadingStartedAt,
+        ['image/png'],
+        '已复制 HTML 截图到剪贴板',
+        'HTML 截图已写入剪贴板，但当前浏览器不支持回读校验，请直接粘贴确认。',
+        'HTML 截图已写入剪贴板，但浏览器没有暴露 PNG 回读结果；如果在飞书或微信聊天窗里仍粘贴成文字，请改用下载后发送。',
+      );
     } catch (err) {
+      const message = err instanceof Error ? err.message : '复制 HTML 预览截图失败';
+      await waitForMinimumImageCopyLoading(loadingStartedAt);
+      setImageCopyFeedbackState('html', 'error', message, 4200);
       console.error('Failed to copy HTML screenshot:', err);
     }
   };
@@ -2342,7 +3135,7 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
     try {
       newWindow.opener = null;
       newWindow.document.write(
-        '<!doctype html><html><head><meta charset="UTF-8"><title>AI Artifact Desk</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#475569;">生成预览中...</body></html>',
+        '<!doctype html><html><head><meta charset="UTF-8"><title>AI文档渲染</title></head><body style="margin:0;padding:24px;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;color:#475569;">生成预览中...</body></html>',
       );
       newWindow.document.close();
     } catch {
@@ -2350,8 +3143,11 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
     }
 
     try {
+      await ensureMermaidRendered();
       const html =
-        contentType === 'html' ? buildStandaloneRawHtml(code) : await buildStandaloneHtml(previewRef.current);
+        contentType === 'html'
+          ? buildStandaloneRawHtml(code, currentTheme)
+          : await buildStandaloneHtml(previewRef.current, currentTheme);
       const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       newWindow.location.href = url;
@@ -2367,8 +3163,11 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   const handleExportHtmlFile = async () => {
     if (!previewRef.current) return;
     try {
+      await ensureMermaidRendered();
       const html =
-        contentType === 'html' ? buildStandaloneRawHtml(code) : await buildStandaloneHtml(previewRef.current);
+        contentType === 'html'
+          ? buildStandaloneRawHtml(code, currentTheme)
+          : await buildStandaloneHtml(previewRef.current, currentTheme);
       const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2386,116 +3185,138 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
   };
 
   const isExporting = exportAction === 'open' || exportAction === 'download';
+  const mixedImageCopyUi = getImageCopyButtonUi('mixed', '复制图片', '复制图片');
+  const mermaidImageCopyUi = getImageCopyButtonUi(
+    'mermaid',
+    '复制图片',
+    `复制 ${mermaidDomTotal} 张 Mermaid 图片`,
+  );
+  const htmlImageCopyUi = getImageCopyButtonUi('html', '复制图片', '复制图片');
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-50">
       <div
-        className="flex h-12 shrink-0 items-center justify-between px-4 bg-slate-100 border-b border-slate-200 z-10 shadow-sm"
+        className="shrink-0 border-b border-slate-200 bg-slate-100 z-10 shadow-sm"
       >
-        <div className="flex items-center space-x-3">
-          {onToggleSidebar && (
+        <div className="flex min-h-12 items-center justify-between px-4">
+          <div className="flex items-center space-x-3">
+            {onToggleSidebar && (
+              <button
+                onClick={onToggleSidebar}
+                className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                title={isCollapsed ? '展开编辑器' : '收起编辑器'}
+              >
+                {isMobile
+                  ? (isCollapsed ? <PanelTopOpen size={14} /> : <PanelTopClose size={14} />)
+                  : (isCollapsed ? <Sidebar size={14} /> : <PanelLeftClose size={14} />)}
+              </button>
+            )}
+            <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
+              Preview
+            </span>
+          </div>
+          <div className="flex min-w-0 items-center justify-end gap-2 overflow-x-auto py-2">
+            {canCopyRichText && (
+              <button
+                onClick={handleCopy}
+                disabled={!processedCode || copied}
+                className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
+                  copied
+                    ? 'bg-green-50 text-green-700 border-green-200'
+                    : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+                } disabled:opacity-40`}
+                title={copied ? '已复制' : copyLabel}
+              >
+                {copied ? <Check size={14} /> : <Copy size={14} />}
+                <span className="hidden md:inline">{copied ? '已复制' : copyLabel}</span>
+              </button>
+            )}
+            {contentType === 'mixed' && (
+              <button
+                onClick={handleCopyMixedScreenshot}
+                disabled={isImageCopyBusy}
+                className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${mixedImageCopyUi.className} disabled:opacity-40`}
+                title={mixedImageCopyUi.title}
+              >
+                {mixedImageCopyUi.icon}
+                <span className={mixedImageCopyUi.showLabelOnMobile ? 'inline' : 'hidden md:inline'}>
+                  {mixedImageCopyUi.label}
+                </span>
+              </button>
+            )}
+            {contentType !== 'mixed' && mermaidDomTotal > 0 && (
+              <button
+                onClick={handleCopyImages}
+                disabled={isImageCopyBusy}
+                className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${mermaidImageCopyUi.className} disabled:opacity-40`}
+                title={mermaidImageCopyUi.title}
+              >
+                {mermaidImageCopyUi.icon}
+                <span className={mermaidImageCopyUi.showLabelOnMobile ? 'inline' : 'hidden md:inline'}>
+                  {mermaidImageCopyUi.label}
+                </span>
+              </button>
+            )}
+            {contentType === 'html' && (
+              <button
+                onClick={handleCopyScreenshot}
+                disabled={isImageCopyBusy}
+                className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${htmlImageCopyUi.className} disabled:opacity-40`}
+                title={htmlImageCopyUi.title}
+              >
+                {htmlImageCopyUi.icon}
+                <span className={htmlImageCopyUi.showLabelOnMobile ? 'inline' : 'hidden md:inline'}>
+                  {htmlImageCopyUi.label}
+                </span>
+              </button>
+            )}
             <button
-              onClick={onToggleSidebar}
-              className="flex items-center justify-center w-7 h-7 rounded text-xs font-medium transition-colors text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              title={isCollapsed ? '展开编辑器' : '收起编辑器'}
-            >
-              {isMobile
-                ? (isCollapsed ? <PanelTopOpen size={14} /> : <PanelTopClose size={14} />)
-                : (isCollapsed ? <Sidebar size={14} /> : <PanelLeftClose size={14} />)}
-            </button>
-          )}
-          <span className="text-sm font-semibold text-slate-600 uppercase tracking-wider">
-            Preview
-          </span>
-        </div>
-        <div className="flex min-w-0 items-center justify-end gap-2 overflow-x-auto">
-          {canCopyRichText && (
-            <button
-              onClick={handleCopy}
-              disabled={!processedCode || copied || (contentType === 'mermaid' && mermaidCount === 0)}
+              onClick={handleOpenHtmlInNewTab}
+              disabled={!processedCode || isExporting}
               className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-                copied
+                exportAction === 'open'
                   ? 'bg-green-50 text-green-700 border-green-200'
                   : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
               } disabled:opacity-40`}
-              title={copied ? '已复制' : copyLabel}
+              title={exportAction === 'open' ? '已打开' : '新窗口预览'}
             >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
-              <span className="hidden md:inline">{copied ? '已复制' : copyLabel}</span>
+              {exportAction === 'open' ? <Check size={14} /> : <ExternalLink size={14} />}
+              <span className="hidden md:inline">{exportAction === 'open' ? '已打开' : '新窗口预览'}</span>
             </button>
-          )}
-          {contentType === 'mixed' && (
             <button
-              onClick={handleCopyMixedScreenshot}
-              disabled={copiedImages}
+              onClick={handleExportHtmlFile}
+              disabled={!processedCode || isExporting}
               className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-                copiedImages
+                exportAction === 'download'
                   ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
               } disabled:opacity-40`}
-              title={copiedImages ? '已复制图片' : '复制图片'}
+              title={exportAction === 'download' ? '已导出' : '导出 HTML 文件'}
             >
-              {copiedImages ? <Check size={14} /> : <Camera size={14} />}
-              <span className="hidden md:inline">{copiedImages ? '已复制图片' : '复制图片'}</span>
+              {exportAction === 'download' ? <Check size={14} /> : <FileDown size={14} />}
+              <span className="hidden md:inline">{exportAction === 'download' ? '已导出' : '导出 HTML'}</span>
             </button>
-          )}
-          {contentType !== 'mixed' && mermaidCount > 0 && (
-            <button
-              onClick={handleCopyImages}
-              disabled={copiedImages || mermaidCount === 0}
-              className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-                copiedImages
-                  ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-              } disabled:opacity-40`}
-              title={copiedImages ? '已复制图片' : `复制 ${mermaidCount} 张 Mermaid 图片`}
-            >
-              {copiedImages ? <Check size={14} /> : <ImageIcon size={14} />}
-              <span className="hidden md:inline">{copiedImages ? '已复制图片' : '复制图片'}</span>
-            </button>
-          )}
-          {contentType === 'html' && (
-            <button
-              onClick={handleCopyScreenshot}
-              disabled={copiedScreenshot}
-              className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-                copiedScreenshot
-                  ? 'bg-green-50 text-green-700 border-green-200'
-                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-              } disabled:opacity-40`}
-              title={copiedScreenshot ? '已复制图片' : '复制图片'}
-            >
-              {copiedScreenshot ? <Check size={14} /> : <Camera size={14} />}
-              <span className="hidden md:inline">{copiedScreenshot ? '已复制图片' : '复制图片'}</span>
-            </button>
-          )}
-          <button
-            onClick={handleOpenHtmlInNewTab}
-            disabled={!processedCode || isExporting}
-            className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-              exportAction === 'open'
-                ? 'bg-green-50 text-green-700 border-green-200'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-            } disabled:opacity-40`}
-            title={exportAction === 'open' ? '已打开' : '新窗口预览'}
-          >
-            {exportAction === 'open' ? <Check size={14} /> : <ExternalLink size={14} />}
-            <span className="hidden md:inline">{exportAction === 'open' ? '已打开' : '新窗口预览'}</span>
-          </button>
-          <button
-            onClick={handleExportHtmlFile}
-            disabled={!processedCode || isExporting}
-            className={`flex shrink-0 items-center gap-1 px-3 py-1.5 rounded text-xs font-medium transition-colors border ${
-              exportAction === 'download'
-                ? 'bg-green-50 text-green-700 border-green-200'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
-            } disabled:opacity-40`}
-            title={exportAction === 'download' ? '已导出' : '导出 HTML 文件'}
-          >
-            {exportAction === 'download' ? <Check size={14} /> : <FileDown size={14} />}
-            <span className="hidden md:inline">{exportAction === 'download' ? '已导出' : '导出 HTML'}</span>
-          </button>
+          </div>
         </div>
+        {imageCopyFeedback.message && (
+          <div
+            className={`flex items-center gap-2 px-4 pb-3 text-xs ${
+              imageCopyFeedback.status === 'error'
+                ? 'text-rose-700'
+                : imageCopyFeedback.status === 'warning'
+                  ? 'text-amber-700'
+                  : 'text-slate-600'
+            }`}
+            aria-live="polite"
+          >
+            {imageCopyFeedback.status === 'loading' && <Loader2 size={14} className="animate-spin" />}
+            {imageCopyFeedback.status === 'success' && <Check size={14} />}
+            {(imageCopyFeedback.status === 'warning' || imageCopyFeedback.status === 'error') && (
+              <AlertCircle size={14} />
+            )}
+            <span>{imageCopyFeedback.message}</span>
+          </div>
+        )}
       </div>
       <div
         ref={scrollContainerRef}
@@ -2503,11 +3324,13 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
       >
         <div
           className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-50 transition-opacity duration-300 ease-in-out ${
-            isRendering && processedCode ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            showLoadingOverlay ? 'opacity-100' : 'opacity-0 pointer-events-none'
           }`}
         >
           <Loader2 size={28} className="animate-spin text-indigo-600 mb-3" />
-          <span className="text-sm text-slate-500 font-medium">渲染中...</span>
+          <span className="text-sm text-slate-500 font-medium">
+            {isMermaidLoading ? `渲染 Mermaid ${mermaidCount}/${mermaidDomTotal}` : '渲染中...'}
+          </span>
         </div>
         <div className="w-full p-8">
           <div
@@ -2519,13 +3342,15 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
               rehypePlugins={[rehypeRaw]}
               components={useMemo(
                 () => ({
-                  p: ({ ...props }: any) => <div className="mb-4 leading-relaxed" {...props} />,
-                  div: ({ ...props }: any) => {
-                    // If it has a data-html attribute, it's our injected raw HTML
-                    if (props['data-html']) {
-                      return <div dangerouslySetInnerHTML={{ __html: props['data-html'] }} />;
-                    }
-                    return <div {...props} />;
+                  p: (props: any) => {
+                    const { node, ...rest } = props;
+                    void node;
+                    return <div className="mb-4 leading-relaxed" {...rest} />;
+                  },
+                  div: (props: any) => {
+                    const { node, ...rest } = props;
+                    void node;
+                    return <div {...rest} />;
                   },
                   code({ className, children, ...props }: any) {
                     const match = /language-([a-zA-Z0-9_-]+)/.exec(className || '');
@@ -2540,9 +3365,10 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
                       return (
                         <MermaidDiagram
                           code={content}
+                          theme={currentTheme}
                           onSvgReady={(svg) => {
                             mermaidSvgRef.current = svg;
-                            refreshMermaidCount();
+                            window.requestAnimationFrame(refreshMermaidCount);
                           }}
                         />
                       );
@@ -2560,7 +3386,7 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
                     }
 
                     if (isBlock && HTML_PREVIEW_LANGUAGES.has(language)) {
-                      return <HtmlPreview code={content} />;
+                      return <HtmlPreview code={content} theme={currentTheme} />;
                     }
 
                     return isBlock ? (
@@ -2583,7 +3409,7 @@ const ArtifactPreview: React.FC<ArtifactPreviewProps> = ({
                     );
                   },
                 }),
-                [refreshMermaidCount],
+                [currentTheme, refreshMermaidCount],
               )}
             >
               {processedCode}

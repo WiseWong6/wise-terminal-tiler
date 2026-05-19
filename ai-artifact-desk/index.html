@@ -3,9 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Artifact Desk</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <title>AI文档渲染 — Wise</title>
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "AI Artifact Desk",
+        "alternateName": "AI文档渲染 AI Artifact Desk",
+        "applicationCategory": "WebApplication",
+        "operatingSystem": "Any",
+        "url": "https://wisewong.com/ai-artifact-desk/",
+        "image": "https://wisewong.com/assets/ai-artifact-desk-preview.webp",
+        "description": "Markdown、JSON、Mermaid、HTML 的 AI 文档渲染与预览工具，支持 JSON 格式化、单独或混合渲染，一键复制为图片或富文本。",
+        "author": {
+          "@type": "Person",
+          "name": "Wise",
+          "url": "https://wisewong.com/"
+        }
+      }
+    </script>
     <link rel="stylesheet" href="./tailwind.css">
+    <script type="module" src="./analytics.js"></script>
     <style>
       html, body, #root {
         height: 100%;
@@ -155,8 +173,18 @@
       }
     </style>
   <link rel="stylesheet" href="/index.css">
+  <script>
+    var _hmt = _hmt || [];
+    (function() {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?832c0aa63fe65c887a71252c4c0494aa";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
 </head>
   <body>
+    <h1 style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">AI文档渲染与预览工具</h1>
     <div id="root">
       <div class="skeleton-app">
         <div class="skeleton-header">
@@ -211,6 +239,22 @@
   <script type="module" src="/index.tsx"></script>
   <script>
     (function() {
+      function normalizeTheme(theme) {
+        return theme === 'dark' || theme === 'light' ? theme : null;
+      }
+
+      function getUrlTheme() {
+        try {
+          var searchTheme = normalizeTheme(new URLSearchParams(window.location.search).get('theme'));
+          if (searchTheme) return searchTheme;
+
+          var hash = window.location.hash.replace(/^#/, '').replace(/^\?/, '');
+          return normalizeTheme(new URLSearchParams(hash).get('theme'));
+        } catch (err) {
+          return null;
+        }
+      }
+
       function applyTheme(theme) {
         if (theme === 'dark') {
           document.documentElement.dataset.theme = 'dark';
@@ -219,10 +263,14 @@
         }
       }
 
+      var urlTheme = getUrlTheme();
+
       function getInitialTheme() {
+        if (urlTheme) return urlTheme;
         try {
           const savedTheme = localStorage.getItem('theme');
-          if (savedTheme === 'dark' || savedTheme === 'light') return savedTheme;
+          const normalizedSavedTheme = normalizeTheme(savedTheme);
+          if (normalizedSavedTheme) return normalizedSavedTheme;
         } catch (err) {}
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
           return 'dark';
@@ -230,33 +278,58 @@
         return 'light';
       }
 
-      // 初始：优先跟随站点持久化主题，再回退系统偏好
+      // 初始：优先使用外部传入主题，再跟随站点持久化主题，最后回退系统偏好
       applyTheme(getInitialTheme());
 
       window.addEventListener('storage', function(event) {
-        if (event.key === 'theme' && (event.newValue === 'dark' || event.newValue === 'light')) {
-          applyTheme(event.newValue);
+        if (urlTheme) return;
+        var nextTheme = normalizeTheme(event.newValue);
+        if (event.key === 'theme' && nextTheme) {
+          applyTheme(nextTheme);
         }
       });
 
       if (window.matchMedia) {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(event) {
+          if (urlTheme) return;
           let savedTheme = null;
           try {
             savedTheme = localStorage.getItem('theme');
           } catch (err) {}
-          if (savedTheme !== 'dark' && savedTheme !== 'light') {
+          if (!normalizeTheme(savedTheme)) {
             applyTheme(event.matches ? 'dark' : 'light');
           }
         });
       }
 
+      function getParentOrigin() {
+        if (window.parent === window) return '';
+        if (location.protocol === 'file:') return 'null';
+        try {
+          return document.referrer ? new URL(document.referrer).origin : location.origin;
+        } catch (err) {
+          return location.origin;
+        }
+      }
+
+      var parentOrigin = getParentOrigin();
+
       if (window.parent && window.parent !== window) {
-        window.parent.postMessage({ type: 'theme-ready' }, '*');
+        window.parent.postMessage(
+          { type: 'theme-ready' },
+          parentOrigin === 'null' ? '*' : parentOrigin
+        );
       }
 
       // 监听父页面 postMessage
       window.addEventListener('message', function(event) {
+        if (window.parent !== window) {
+          if (parentOrigin === 'null') {
+            if (event.origin !== 'null' && event.origin !== '') return;
+          } else if (event.origin !== parentOrigin) {
+            return;
+          }
+        }
         if (event.data && event.data.type === 'theme') {
           applyTheme(event.data.theme);
         }
@@ -265,4 +338,3 @@
   </script>
 </body>
 </html>
-

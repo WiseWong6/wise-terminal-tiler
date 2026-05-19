@@ -64,6 +64,7 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
 
   const scaledWidth = naturalSize.width > 0 ? naturalSize.width * scale : undefined;
   const scaledHeight = naturalSize.height > 0 ? naturalSize.height * scale : undefined;
+  const contentWidth = fullWidth && naturalSize.width > 0 ? `${naturalSize.width}px` : fullWidth ? '100%' : undefined;
 
   return (
     <div
@@ -75,17 +76,21 @@ const ZoomableWrapper: React.FC<ZoomableWrapperProps> = ({ children, className =
       <div
         className={fullWidth ? 'w-full' : ''}
         style={{
-          minWidth: scaledWidth,
+          width: scaledWidth,
+          minWidth: fullWidth ? '100%' : scaledWidth,
+          height: scaledHeight,
           minHeight: scaledHeight,
+          display: 'grid',
+          placeItems: 'center',
         }}
       >
         <div
           ref={contentRef}
           style={{
             transform: `scale(${scale})`,
-            transformOrigin: 'top left',
+            transformOrigin: 'center center',
             display: fullWidth ? 'block' : 'inline-block',
-            width: fullWidth ? '100%' : undefined,
+            width: contentWidth,
           }}
         >
           {children}

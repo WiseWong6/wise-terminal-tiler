@@ -8,8 +8,6 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
-dist-ssr
 *.local
 
 # Environment
@@ -30,3 +28,6 @@ migrated_prompt_history/
 *.njsproj
 *.sln
 *.sw?
+
+# Build outputs
+dist/
