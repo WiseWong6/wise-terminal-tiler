@@ -4,19 +4,19 @@
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
 </p>
 
-> AI文档渲染工具 —— 在同一个编辑器里写 Markdown、Mermaid、JSON、HTML
->
-> 右边立刻看到渲染结果，不用在四个工具之间来回切换
+> AI 文档渲染工具：在一个编辑器里写 Markdown、Mermaid、JSON、HTML，右侧即时预览、复制和导出。
+
+AI Artifact Desk 面向经常和 AI 生成内容打交道的人：模型输出里常常混着说明文字、JSON 配置、Mermaid 图表和 HTML 片段。这个工具把这些内容放回同一个工作台里，不用在 Markdown 预览、Mermaid Live、JSON Formatter 和浏览器之间来回切。
 
 ---
 
 ## 预览
 
-左侧写内容，右侧实时渲染：
+左侧编辑，右侧实时渲染：
 
-```
+```text
 ┌──────────────────────────────────────────────────────┐
-│  AI Artifact Desk                [samples]  ⚙  ☰       │
+│  AI Artifact Desk                    案例  源码  关于 │
 ├──────────────┬───────────────────────────────────────┤
 │              │                                       │
 │   Editor     │   Preview                             │
@@ -26,28 +26,28 @@
 │  graph LR    │   │ A │───→│ B │                      │
 │    A --> B   │   └───┘    └───┘                      │
 │  ```         │                                       │
-│              │                                       │
+│              │   复制富文本 / 复制图片 / 导出 HTML    │
 │  ```json     │   ┌─────────────────┐                 │
-│  {"a": 1}    │   │ { "a": 1 }     │                 │
+│  {"a": 1}    │   │ { "a": 1 }       │                 │
 │  ```         │   └─────────────────┘                 │
-│              │                                       │
 └──────────────┴───────────────────────────────────────┘
 ```
 
 ---
 
-## 它有什么用 | At a Glance
+## 核心功能
 
-- ⚡ **输入即预览**，600ms 防抖，不会卡
-- 🎯 **自动检测内容类型** —— 纯 JSON 直接贴进去能渲染，纯 Mermaid 语法也行
-- 📊 **Mermaid 图表导出** SVG / PNG（PNG 自动放大到 2500px 宽，白底）
-- 🔒 **HTML 沙盒渲染** —— 完整 HTML 文档在 iframe 中渲染，带样式隔离
-- 🎨 **内置 6 个示例** —— Mixed / Markdown / HTML / JSON / Flowchart / Sequence 一键切换
-- 🤖 **AI 修复** —— 写错了让 AI 帮你修，支持自定义 API 提供商
+- 实时预览：编辑内容后自动刷新，默认 600ms 防抖。
+- 自动识别内容类型：支持 Markdown、纯 JSON、纯 Mermaid、完整 HTML 文档和混合内容。
+- Mermaid 图表工作流：内置多类图表示例，支持懒渲染、独立缩放、SVG 下载和 PNG 下载。
+- 一键复制：JSON 可复制格式化结果，Markdown/Mermaid 可复制富文本，Mermaid 可复制单图或多图图片，混合内容和 HTML 可复制截图。
+- HTML 沙盒预览：完整 HTML 文档在 iframe 中渲染，样式隔离，并支持新窗口预览与导出 HTML 文件。
+- 主题适配：支持亮色/暗色主题，嵌入主站时可接收父页面主题同步。
+- 移动端适配：小屏下编辑器可折叠，工具栏按钮自动收敛为图标优先。
 
 ---
 
-## 快速开始 | Quick Start
+## 快速开始
 
 ```bash
 git clone https://github.com/WiseWong6/wise-labs.git
@@ -55,31 +55,25 @@ cd wise-labs/ai-artifact-desk
 
 npm install
 npm run dev
-# → http://localhost:3000
+# http://localhost:3000
 ```
 
 ---
 
-## 它解决了什么问题
+## 它解决什么问题
 
-**如果你也这样工作**
+写技术文档、提示词说明、方案草稿或 AI 输出验收时，内容经常不是单一格式：一段 Markdown 说明里夹着 JSON 配置、Mermaid 流程图，甚至一整段 HTML 原型。
 
-写技术文档的时候，内容经常是混合的：一段 Markdown 说明、一个 JSON 配置示例、一张 Mermaid 流程图、再加几行 HTML 做特殊排版。
+传统工具通常只照顾其中一种格式：
 
-现有的工具要么只支持 Markdown（Typora、StackEdit），要么只做 Mermaid（mermaid.live），要么只做 JSON（jsoneditor）。结果就是同一份文档要在三四个窗口之间来回切换预览。
+| 方案 | 擅长什么 | 不方便之处 |
+|------|----------|------------|
+| mermaid.live | Mermaid 预览和导出 | 只能处理图，不能承载完整文档上下文 |
+| Typora / StackEdit | Markdown 写作 | 对 JSON、完整 HTML、复杂 Mermaid 工作流支持有限 |
+| JSON Formatter | JSON 格式化 | 只处理结构化数据，不能和说明文档混排 |
+| CodePen / JSFiddle | HTML/CSS/JS 预览 | 更偏前端开发，不适合快速整理 AI 文档输出 |
 
-而且每次切到 mermaid.live 画个图，还得手动把代码复制回文档里。
-
----
-
-## 为什么现有方案还没完全解决
-
-| 方案 | 擅长什么 | 为什么还不够 | 这个工具补哪一段 |
-|------|---------|-------------|-----------------|
-| **mermaid.live** | Mermaid 图表预览和导出 | 只做 Mermaid，不支持 Markdown 混排 | 在同一个编辑器里同时写文字和画图 |
-| **Typora / StackEdit** | Markdown 实时预览 | 对 Mermaid 支持有限，不渲染 JSON，不支持完整 HTML 文档 | 一个编辑器搞定所有内容类型 |
-| **CodePen / JSFiddle** | HTML/CSS/JS 在线预览 | 面向前端开发，不是文档编辑器 | 为文档写作场景优化 |
-| **VS Code 预览** | Markdown 预览 | 需要装插件才支持 Mermaid，JSON 和 HTML 要分别用不同的预览方式 | 开箱即用，自动检测内容类型 |
+AI Artifact Desk 的目标是把“看一眼是否渲染正确、复制到聊天/文档/PPT、导出给别人看”这条链路缩短。
 
 ---
 
@@ -87,66 +81,25 @@ npm run dev
 
 ### Markdown
 
-完整支持 GFM（GitHub Flavored Markdown）：表格、任务列表、删除线、代码高亮。原生 HTML 标签也可以直接混在 Markdown 里写。
+支持 GitHub Flavored Markdown：表格、任务列表、删除线、代码块和语法高亮。Markdown 中可以混写原生 HTML。
 
 ### Mermaid
 
-支持所有主流图表类型：
+支持 Mermaid 11 的主流图表类型，包括 Flowchart、Sequence、Class、State、ER、Gantt、Pie、Journey、Mindmap、Timeline、Git Graph、C4、Quadrant、XYChart、Sankey、Treemap、Kanban、Architecture、Packet、Ishikawa 等。
 
-| 类型 | 关键词 |
-|------|--------|
-| 流程图 | `graph` / `flowchart` |
-| 时序图 | `sequenceDiagram` |
-| 类图 | `classDiagram` |
-| 状态图 | `stateDiagram` |
-| ER 图 | `erDiagram` |
-| 甘特图 | `gantt` |
-| 饼图 | `pie` |
-| 用户旅程 | `journey` |
-| 思维导图 | `mindmap` |
-| 时间线 | `timeline` |
-| Git 图 | `gitGraph` |
-
-每张图表上方有 SVG 和 PNG 导出按钮。PNG 导出自动缩放到高分辨率，白色背景，可以直接贴到文档或 PPT 里。
+每张 Mermaid 图都有独立的缩放控制和 SVG/PNG 下载按钮。预览区还提供“复制图片”，可把 Mermaid 图写入剪贴板，方便粘贴到文档、PPT 或聊天窗口。
 
 ### JSON
 
-支持 JSON5 语法（允许注释、尾随逗号、单引号）。输入后自动格式化并高亮显示。
+支持 JSON5：允许注释、尾随逗号和单引号。输入后会自动解析、格式化并高亮展示。
 
 ### HTML
 
-检测到完整 HTML 文档（以 `<!DOCTYPE html>` 或 `<html` 开头）时，在 iframe 沙盒中渲染，带完整样式支持。
+当内容是完整 HTML 文档时，会在 iframe 沙盒中渲染。预览区支持新窗口打开、导出 HTML 文件和复制截图。
 
----
+### 混合内容
 
-## AI 修复
-
-当预览出现语法错误时，编辑器会显示错误信息和「Fix with AI」按钮。点击后会把当前代码和错误信息发给你配置的 AI 提供商，返回修复后的代码。
-
-点击右上角齿轮图标配置 AI：
-
-| 提供商类型 | 支持的服务 |
-|-----------|-----------|
-| OpenAI 兼容 | OpenAI、DeepSeek、Gemini、Groq、Ollama |
-| Anthropic | Claude API |
-
-配置存在 localStorage，不会发送到任何服务器。API 请求直接从浏览器发出。
-
----
-
-## 这个工具的边界
-
-**它做**
-- 一个编辑器里混合写 Markdown、HTML、JSON、Mermaid，实时预览
-- 自动检测内容类型，不需要手动指定
-- 高分辨率图表导出（SVG / PNG）
-- 可选的 AI 辅助修复
-
-**它不做**
-- 不是协作编辑器（没有多人实时协作）
-- 不是文件管理器（只有一个编辑区，不管理多个文件）
-- 不做持久化存储（内容在页面刷新后会重置为示例）
-- 不是 IDE（没有文件树、终端、Git 集成）
+Markdown 文档中的 Mermaid、JSON、HTML 片段会在同一预览区里一起呈现。复制富文本时会尽量保留布局与图表结果。
 
 ---
 
@@ -155,11 +108,12 @@ npm run dev
 | 依赖 | 用途 |
 |------|------|
 | React 19 | UI 框架 |
-| Vite | 构建工具 |
-| Tailwind CSS | 样式（CDN 加载） |
+| Vite | 开发与构建 |
+| Tailwind CSS v4 CLI | 构建时生成样式 |
 | mermaid | 图表渲染 |
 | react-markdown + remark-gfm + rehype-raw | Markdown 渲染 |
 | react-syntax-highlighter | 代码高亮 |
+| html2canvas | 截图与图片复制 |
 | json5 | 宽松 JSON 解析 |
 | lucide-react | 图标 |
 
@@ -169,12 +123,30 @@ npm run dev
 
 ```bash
 npm install          # 安装依赖
-npm run dev          # 启动开发服务器 (http://localhost:3000)
+npm run dev          # 启动开发服务器
+npm test             # 运行测试
+npm run lint         # ESLint 检查
 npm run build        # 生产构建
 npm run preview      # 预览生产构建
-npm run lint         # ESLint 检查
-npm run format       # Prettier 格式化
 ```
+
+---
+
+## 边界
+
+**它做**
+
+- 混合渲染 Markdown、Mermaid、JSON 和 HTML。
+- 把预览内容复制为文本、富文本、图片或截图。
+- 导出 Mermaid 图和完整 HTML 文件。
+- 在本地浏览器中运行，不需要账号。
+
+**它不做**
+
+- 不是多人协作编辑器。
+- 不是文件管理器，当前只有一个编辑区。
+- 不提供云端持久化存储。
+- 不内置 AI API 调用或自动修复功能。
 
 ---
 

@@ -5,14 +5,14 @@
 </p>
 
 <p align="center">
-  一系列提升 AI 开发效率的实验性工具 —— 从模型评测到窗口管理，从内容预览到 Agent 可视化
+  一系列提升 AI 开发效率的实验性工具 —— 从内容渲染到窗口管理，从复制导出到 Agent 可视化
 </p>
 
 ---
 
 ## 这是什么
 
-Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 4 个独立但互补的工具，覆盖内容编辑、终端管理和 Agent 调试等场景。
+Wise Labs 是一个面向 AI 时代开发者的工作台。它包含多个独立但互补的工具，覆盖内容渲染、终端管理和 Agent 调试等场景。
 
 每个项目都可以独立使用，组合起来则构成一套完整的 AI 开发辅助工具链。
 
@@ -57,19 +57,18 @@ Wise Labs 是一个面向 AI 时代开发者的工作台。它包含 4 个独立
 
 ### 📝 [ai-artifact-desk](./ai-artifact-desk)
 
-> AI Artifact Desk / AI文档渲染 —— 一个编辑器搞定 Markdown、Mermaid、JSON、HTML
+> AI Artifact Desk / AI 文档渲染 —— 一个编辑器里预览、复制和导出 Markdown、Mermaid、JSON、HTML
 
 **核心功能**
-- 🔄 实时预览，600ms 防抖
-- 🎯 自动检测内容类型（Markdown / Mermaid / JSON / HTML）
-- 📊 Mermaid 图表导出 SVG / PNG（基于 SVG viewBox 自然尺寸 + 2x 高清倍率）
-- 📋 一键复制 Mermaid 图片到剪贴板（支持单图 PNG / 多图 / 富文本粘贴）
-- 🔒 HTML 在 iframe 沙盒中渲染
-- 📸 截图捕获（预览区 / iframe 内容导出 PNG）
-- 🔍 每个 Mermaid 图支持独立缩放和平移浏览
-- 🌙 暗色模式 —— 支持系统偏好、localStorage 持久化、iframe 跨窗口同步
+- 🔄 实时预览，600ms 防抖，自动识别混合内容
+- 🎯 支持 Markdown / Mermaid / JSON / HTML / 混合文档
+- 📊 Mermaid 支持懒渲染、独立缩放、SVG 下载和 PNG 下载
+- 📋 一键复制格式化 JSON、富文本、Mermaid 图片和预览截图
+- 🔒 完整 HTML 文档在 iframe 沙盒中渲染，可新窗口预览和导出 HTML
+- 📸 预览区与 HTML iframe 支持截图复制
+- 🌙 亮色/暗色主题，支持嵌入主站时跨窗口同步
 
-**Tech Stack:** React 19, Vite, Mermaid, react-markdown, html2canvas, json5, react-syntax-highlighter, lucide-react, Tailwind CSS
+**Tech Stack:** React 19, Vite, Tailwind CSS v4 CLI, Mermaid, react-markdown, html2canvas, json5, react-syntax-highlighter, lucide-react
 
 **[查看详情 →](./ai-artifact-desk)**
 
@@ -129,7 +128,7 @@ npm run dev
 
 **AI 优先**
 
-所有工具都考虑 AI Agent 的使用场景。ai-workstation 支持 Agent 直接调用，model-eval-workbench 用于评测模型能力，openclaw_game 用于可视化 Agent 运行。
+所有工具都考虑 AI Agent 的使用场景。ai-workstation 支持 Agent 直接调用，ai-artifact-desk 用于整理和复用 AI 生成的混合内容，openclaw_game 用于可视化 Agent 运行。
 
 **本地优先**
 

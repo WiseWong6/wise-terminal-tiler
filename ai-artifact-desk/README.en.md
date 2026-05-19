@@ -1,22 +1,22 @@
-# ai-artifact-desk
+# AI Artifact Desk
 
 <p align="center">
   <a href="./README.md">中文</a> | <a href="./README.en.md">English</a>
 </p>
 
-> A real-time mixed content editor.
->
-> AI Artifact Desk renders Markdown, HTML, JSON, and Mermaid in one editor — see the rendered result instantly on the right.
->
-> Stop switching between four different tools when writing docs.
+> A live rendering desk for AI-generated artifacts: write Markdown, Mermaid, JSON, and HTML in one editor, then preview, copy, and export from the same place.
+
+AI Artifact Desk is built for the messy output real AI workflows produce: explanatory Markdown, JSON configs, Mermaid diagrams, and HTML snippets often arrive together. Instead of bouncing between a Markdown previewer, Mermaid Live, a JSON formatter, and a browser, you can inspect the whole artifact in one workspace.
+
+---
 
 ## Preview
 
-Edit on the left, live render on the right:
+Edit on the left, render on the right:
 
-```
+```text
 ┌──────────────────────────────────────────────────────┐
-│  AI Artifact Desk                [samples]  ⚙  ☰       │
+│  AI Artifact Desk             Samples  Source  About │
 ├──────────────┬───────────────────────────────────────┤
 │              │                                       │
 │   Editor     │   Preview                             │
@@ -26,22 +26,26 @@ Edit on the left, live render on the right:
 │  graph LR    │   │ A │───→│ B │                      │
 │    A --> B   │   └───┘    └───┘                      │
 │  ```         │                                       │
-│              │                                       │
+│              │   Copy rich text / Copy image / HTML  │
 │  ```json     │   ┌─────────────────┐                 │
-│  {"a": 1}    │   │ { "a": 1 }     │                 │
+│  {"a": 1}    │   │ { "a": 1 }       │                 │
 │  ```         │   └─────────────────┘                 │
-│              │                                       │
 └──────────────┴───────────────────────────────────────┘
 ```
 
-## At a Glance
+---
 
-- Type and preview instantly — 600ms debounce, no lag
-- Auto-detects content type: paste raw JSON or raw Mermaid syntax directly, no need to wrap in fences
-- Export Mermaid diagrams as SVG or PNG (PNG auto-scales to 2500px wide, white background)
-- Full HTML documents render in a sandboxed iframe with style isolation
-- 6 built-in sample contents, one-click switch: Mixed / Markdown / HTML / JSON / Flowchart / Sequence
-- AI fix: let AI fix your syntax errors, with configurable API providers
+## Highlights
+
+- Live preview with a 600ms editing debounce.
+- Automatic content detection for Markdown, raw JSON, raw Mermaid, full HTML documents, and mixed documents.
+- Mermaid workflow with built-in samples, lazy rendering, per-diagram zoom controls, SVG download, and PNG download.
+- One-click copy: formatted JSON, rich Markdown/Mermaid output, single or multiple Mermaid images, mixed-content screenshots, and HTML screenshots.
+- Sandboxed HTML preview in an iframe, plus open-in-new-window and HTML file export.
+- Theme support for light and dark mode, including parent-page theme sync when embedded.
+- Mobile-friendly layout with a collapsible editor and icon-first toolbar actions.
+
+---
 
 ## Quick Start
 
@@ -51,31 +55,25 @@ cd wise-labs/ai-artifact-desk
 
 npm install
 npm run dev
-# → http://localhost:3000
+# http://localhost:3000
 ```
 
 ---
 
-## What Problem Does It Solve
+## What Problem It Solves
 
-**If you work like this**
+Technical docs, prompt notes, architecture sketches, and AI output reviews rarely stay in one format. A single artifact may contain Markdown explanations, JSON config, Mermaid diagrams, and a full HTML mockup.
 
-When writing technical docs, the content is often mixed: a Markdown paragraph, a JSON config example, a Mermaid flowchart, plus a few lines of HTML for special formatting.
+Most tools are optimized for only one part of that job:
 
-Existing tools either only support Markdown (Typora, StackEdit), or only do Mermaid (mermaid.live), or only do JSON (jsoneditor). The result: you're constantly switching between three or four windows to preview one document.
+| Tool | Good at | Gap |
+|------|---------|-----|
+| mermaid.live | Mermaid preview and export | Diagram-only, without the surrounding document context |
+| Typora / StackEdit | Markdown writing | Limited support for JSON, full HTML, and complex Mermaid workflows |
+| JSON Formatter | Structured data formatting | No surrounding narrative or mixed-document preview |
+| CodePen / JSFiddle | HTML/CSS/JS preview | Geared toward frontend development, not quick AI artifact review |
 
-And every time you switch to mermaid.live to draw a diagram, you still have to manually copy the code back into your document.
-
----
-
-## Why Existing Solutions Fall Short
-
-| Tool | Good at | Why it's not enough |
-|------|---------|---------------------|
-| **mermaid.live** | Mermaid diagram preview & export | Mermaid only — no Markdown mixing; can't write text and diagrams in the same file |
-| **Typora / StackEdit** | Markdown live preview | Limited Mermaid support, no JSON rendering, no full HTML document support |
-| **CodePen / JSFiddle** | HTML/CSS/JS online preview | Built for frontend dev, not document editing |
-| **VS Code preview** | Markdown preview | Needs plugins for Mermaid; JSON and HTML each require different preview methods |
+AI Artifact Desk shortens the loop from “paste AI output” to “verify the rendering” to “copy or export something usable.”
 
 ---
 
@@ -83,63 +81,39 @@ And every time you switch to mermaid.live to draw a diagram, you still have to m
 
 ### Markdown
 
-Full GFM (GitHub Flavored Markdown) support: tables, task lists, strikethrough, syntax highlighting. Raw HTML tags can be mixed directly into Markdown.
+GitHub Flavored Markdown is supported, including tables, task lists, strikethrough, fenced code blocks, and syntax highlighting. Raw HTML can be mixed into Markdown.
 
 ### Mermaid
 
-All major diagram types are supported:
+Supports mainstream Mermaid 11 diagram types, including Flowchart, Sequence, Class, State, ER, Gantt, Pie, Journey, Mindmap, Timeline, Git Graph, C4, Quadrant, XYChart, Sankey, Treemap, Kanban, Architecture, Packet, and Ishikawa.
 
-| Type | Keyword |
-|------|---------|
-| Flowchart | `graph` / `flowchart` |
-| Sequence | `sequenceDiagram` |
-| Class | `classDiagram` |
-| State | `stateDiagram` |
-| ER | `erDiagram` |
-| Gantt | `gantt` |
-| Pie | `pie` |
-| User Journey | `journey` |
-| Mindmap | `mindmap` |
-| Timeline | `timeline` |
-| Git Graph | `gitGraph` |
-
-Each diagram has SVG and PNG export buttons above it. PNG export auto-scales to high resolution with a white background — ready to paste into docs or slides.
+Each Mermaid diagram has independent zoom controls and SVG/PNG download buttons. The preview toolbar can also copy rendered Mermaid images to the clipboard for documents, slides, or chat apps.
 
 ### JSON
 
-Supports JSON5 syntax (comments, trailing commas, single quotes). Input is auto-formatted and syntax-highlighted.
+JSON5 is supported, including comments, trailing commas, and single quotes. Input is parsed, formatted, and syntax-highlighted automatically.
 
 ### HTML
 
-When a full HTML document is detected (starting with `<!DOCTYPE html>` or `<html`), it renders in a sandboxed iframe with full style support.
+Full HTML documents render in a sandboxed iframe. The preview toolbar supports opening the result in a new window, exporting an HTML file, and copying a screenshot.
 
----
+### Mixed Documents
 
-## AI Fix
-
-When the preview encounters a syntax error, the editor shows the error message and a "Fix with AI" button. Clicking it sends your code and error to your configured AI provider, which returns the fixed code.
-
-Click the gear icon in the top-right to configure AI:
-
-| Provider Type | Supported Services |
-|--------------|-------------------|
-| OpenAI-compatible | OpenAI, DeepSeek, Gemini, Groq, Ollama |
-| Anthropic | Claude API |
-
-Configuration is stored in localStorage — nothing is sent to any server. API requests go directly from the browser.
+Mermaid, JSON, and HTML blocks inside Markdown render together in the same preview. Rich copy preserves as much layout and rendered diagram output as the browser allows.
 
 ---
 
 ## Tech Stack
 
 | Dependency | Purpose |
-|-----------|---------|
+|------------|---------|
 | React 19 | UI framework |
-| Vite | Build tool |
-| Tailwind CSS | Styling (CDN) |
+| Vite | Development and build tooling |
+| Tailwind CSS v4 CLI | Build-time CSS generation |
 | mermaid | Diagram rendering |
 | react-markdown + remark-gfm + rehype-raw | Markdown rendering |
 | react-syntax-highlighter | Code highlighting |
+| html2canvas | Screenshots and image copy |
 | json5 | Lenient JSON parsing |
 | lucide-react | Icons |
 
@@ -149,11 +123,11 @@ Configuration is stored in localStorage — nothing is sent to any server. API r
 
 ```bash
 npm install          # Install dependencies
-npm run dev          # Start dev server (http://localhost:3000)
-npm run build        # Production build
-npm run preview      # Preview production build
+npm run dev          # Start the dev server
+npm test             # Run tests
 npm run lint         # Run ESLint
-npm run format       # Format with Prettier
+npm run build        # Production build
+npm run preview      # Preview the production build
 ```
 
 ---
@@ -161,16 +135,18 @@ npm run format       # Format with Prettier
 ## Scope
 
 **It does**
-- Mix Markdown, HTML, JSON, and Mermaid in one editor with live preview
-- Auto-detect content type — no manual selection needed
-- High-resolution diagram export (SVG / PNG)
-- Optional AI-assisted code fixing
 
-**It doesn't**
-- Not a collaborative editor (no real-time multi-user editing)
-- Not a file manager (single editor pane, no multi-file management)
-- No persistent storage (content resets to sample on page refresh)
-- Not an IDE (no file tree, terminal, or Git integration)
+- Render Markdown, Mermaid, JSON, and HTML together.
+- Copy preview output as text, rich text, images, or screenshots.
+- Export Mermaid diagrams and complete HTML files.
+- Run locally in the browser without an account.
+
+**It does not**
+
+- It is not a collaborative editor.
+- It is not a file manager; there is one editor pane.
+- It does not provide cloud persistence.
+- It does not include built-in AI API calls or automatic fixing.
 
 ---
 
@@ -191,3 +167,9 @@ npm run format       # Format with Prettier
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/image?repos=WiseWong6/wise-labs&type=Date)](https://www.star-history.com/#WiseWong6/wise-labs&Date)
+
+---
+
+## License
+
+MIT License
